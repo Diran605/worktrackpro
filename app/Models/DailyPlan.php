@@ -57,12 +57,15 @@ class DailyPlan extends Model
     /**
      * Excludes plans the worker chose to "leave for now" today, so they don't block clock-out again.
      */
-    public function scopeNotLeftToday($query)
+    public function scopeNotLeftToday($query, User $user)
     {
-        return $query->where(function ($q) {
+        // Stored timestamps are UTC; "today" is the organisation's day.
+        $startOfToday = \App\Support\LocalTime::startOfToday($user->organisation_id);
+
+        return $query->where(function ($q) use ($startOfToday) {
             $q->whereNull('carry_over_decided_at')
                 ->orWhere('carry_over_decision', '!=', 'leave')
-                ->orWhereDate('carry_over_decided_at', '<', today());
+                ->orWhere('carry_over_decided_at', '<', $startOfToday);
         });
     }
 

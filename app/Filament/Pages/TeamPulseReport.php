@@ -25,7 +25,7 @@ class TeamPulseReport extends Page
 
     public function mount()
     {
-        $this->reportDate = Carbon::now()->format('Y-m-d');
+        $this->reportDate = auth()->user()->localToday();
         $this->reportPeriod = 'week';
     }
 

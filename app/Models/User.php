@@ -76,6 +76,27 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(WeeklyStatsCache::class);
     }
 
+    /**
+     * The user's organisation timezone (falls back to the app timezone).
+     */
+    public function timezone(): string
+    {
+        return \App\Support\LocalTime::timezoneFor($this->organisation_id);
+    }
+
+    public function localNow(): \Carbon\CarbonImmutable
+    {
+        return \App\Support\LocalTime::now($this->organisation_id);
+    }
+
+    /**
+     * Today's date (Y-m-d) in the user's organisation.
+     */
+    public function localToday(): string
+    {
+        return \App\Support\LocalTime::today($this->organisation_id);
+    }
+
     public function systemMemberships(): HasMany
     {
         return $this->hasMany(SystemMember::class);

@@ -571,7 +571,7 @@ class ManualService
         return DB::transaction(function () use ($user, $match, $attributes) {
             $plan = DailyPlan::query()
                 ->where('user_id', $user->id)
-                ->whereDate('date', today())
+                ->whereDate('date', $user->localToday())
                 ->where('status', PlanStatus::Pending->value)
                 ->where($match)
                 ->first();
@@ -579,7 +579,7 @@ class ManualService
             $plan ??= DailyPlan::create(array_merge($attributes, [
                 'user_id' => $user->id,
                 'organisation_id' => $user->organisation_id,
-                'date' => today()->toDateString(),
+                'date' => $user->localToday(),
                 'priority' => 'medium',
                 'status' => PlanStatus::Pending,
             ]));

@@ -10,6 +10,7 @@ use App\Models\WorkSession;
 use App\Services\InboxService;
 use App\Services\OrganisationSettingsService;
 use App\Services\TimerService;
+use App\Support\LocalTime;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
@@ -21,10 +22,11 @@ class CloseAbandonedSessions extends Command
 
     public function handle(TimerService $timers, OrganisationSettingsService $settings): int
     {
-        $date = $this->option('date') ?: now()->toDateString();
+        // Without --date, every active session is considered and each organisation's own date and close time decide.
+        $date = $this->option('date');
 
         $sessions = WorkSession::query()
-            ->whereDate('date', '<=', $date)
+            ->when($date, fn ($q) => $q->whereDate('date', '<=', $date))
             ->where('status', SessionStatus::Active->value)
             ->whereNull('clock_out')
             ->get();
@@ -51,20 +53,24 @@ class CloseAbandonedSessions extends Command
             $closed++;
         }
 
-        $this->info("Closed {$closed} abandoned session(s) up to {$date}.");
+        $this->info("Closed {$closed} abandoned session(s).");
 
         return Command::SUCCESS;
     }
 
     private function isDueForClosing(WorkSession $session, OrganisationSettingsService $settings): bool
     {
-        if ($this->option('force') || $session->date->lt(today())) {
+        $timezone = LocalTime::timezoneFor((int) $session->organisation_id);
+
+        // A session from an earlier day (in the organisation's calendar) is always closed.
+        if ($this->option('force') || $session->date->toDateString() < LocalTime::today((int) $session->organisation_id)) {
             return true;
         }
 
         $closeTime = $settings->forOrganisation((int) $session->organisation_id)->abandoned_session_close_time ?: '20:00';
 
-        return now()->gte(Carbon::parse($session->date->toDateString() . ' ' . $closeTime));
+        // The close time is the organisation's wall-clock time.
+        return now()->gte(Carbon::parse($session->date->toDateString() . ' ' . $closeTime, $timezone));
     }
 
     private function lastActivityAt(WorkSession $session): Carbon
@@ -92,7 +98,7 @@ class CloseAbandonedSessions extends Command
             recipientIds: array_merge([$worker->id], $worker->departmentAdminIds()),
             subject: 'Session auto-closed',
             body: "The work session for {$worker->name} on {$session->date->format('Y-m-d')} was automatically closed "
-                . "at {$session->clock_out->format('H:i')} (last recorded activity). If you need to continue, request a reopen from your admin.",
+                . "at {$session->clock_out->copy()->setTimezone(LocalTime::timezoneFor((int) $session->organisation_id))->format('H:i')} (last recorded activity). If you need to continue, request a reopen from your admin.",
             messageType: 'system',
         );
     }

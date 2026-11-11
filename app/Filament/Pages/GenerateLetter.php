@@ -60,7 +60,7 @@ class GenerateLetter extends Page implements HasForms
                     $placeholders = [
                         '{{worker_name}}' => $worker->name,
                         '{{worker_department}}' => $worker->department?->name ?? '',
-                        '{{date}}' => now()->toDateString(),
+                        '{{date}}' => $user->localToday(),
                         '{{admin_name}}' => $user->name,
                         '{{company_name}}' => $letterhead?->company_name ?? ($user->organisation?->name ?? ''),
                     ];

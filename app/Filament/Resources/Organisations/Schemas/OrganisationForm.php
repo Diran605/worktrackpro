@@ -24,6 +24,13 @@ class OrganisationForm
                         TextInput::make('slug')
                             ->required()
                             ->unique(ignoreRecord: true),
+                        \Filament\Forms\Components\Select::make('timezone')
+                            ->label('Timezone')
+                            ->options(fn () => \App\Support\LocalTime::options())
+                            ->searchable()
+                            ->default(config('app.timezone'))
+                            ->required()
+                            ->helperText('Decides what "today" means for clock-in, daily plans, recurring tasks and the session close time.'),
                         Toggle::make('is_active')
                             ->default(true)
                             ->required(),

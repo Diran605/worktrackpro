@@ -19,7 +19,7 @@ class DashboardController extends Controller
         $user = $request->user();
         
         $weekStartInput = $request->query('week_start');
-        $weekStart = $weekStartInput ? Carbon::parse($weekStartInput)->startOfWeek() : Carbon::now()->startOfWeek();
+        $weekStart = $weekStartInput ? Carbon::parse($weekStartInput)->startOfWeek() : Carbon::parse($user->localToday())->startOfWeek();
 
         $response = [
             'week_label' => $weekStart->format('M j') . ' - ' . $weekStart->copy()->endOfWeek()->format('M j, Y'),

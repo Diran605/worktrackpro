@@ -22,7 +22,7 @@ class AttendanceOverview extends Page
 
     public function mount(): void
     {
-        $this->date = now()->toDateString();
+        $this->date = auth()->user()->localToday();
     }
 
     public static function canAccess(): bool

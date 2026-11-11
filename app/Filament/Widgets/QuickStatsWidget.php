@@ -23,8 +23,8 @@ class QuickStatsWidget extends StatsOverviewWidget
     protected function getStats(): array
     {
         $user = auth()->user();
-        $weekStart = Carbon::now()->startOfWeek()->format('Y-m-d');
-        $weekEnd = Carbon::now()->endOfWeek()->format('Y-m-d');
+        $weekStart = Carbon::parse(auth()->user()->localToday())->startOfWeek()->format('Y-m-d');
+        $weekEnd = Carbon::parse(auth()->user()->localToday())->endOfWeek()->format('Y-m-d');
 
         $planQuery = DailyPlan::where('organisation_id', $user->organisation_id)
             ->whereBetween('date', [$weekStart, $weekEnd]);
@@ -37,7 +37,7 @@ class QuickStatsWidget extends StatsOverviewWidget
         $pendingPlans = (clone $planQuery)->where('status', 'pending')->count();
         $donePlans = (clone $planQuery)->where('status', 'done')->count();
         $overduePlans = (clone $planQuery)->where('status', 'pending')
-            ->where('date', '<', Carbon::today()->format('Y-m-d'))
+            ->where('date', '<', Carbon::parse(auth()->user()->localToday())->format('Y-m-d'))
             ->count();
 
         $avgRate = $totalPlans > 0 ? round(($donePlans / $totalPlans) * 100) : 0;

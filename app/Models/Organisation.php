@@ -16,6 +16,7 @@ class Organisation extends Model
     protected $fillable = [
         'name',
         'slug',
+        'timezone',
         'is_active',
         'primary_color',
         'secondary_color',
@@ -26,6 +27,21 @@ class Organisation extends Model
     protected $casts = [
         'is_active' => 'boolean',
     ];
+
+    protected static function booted(): void
+    {
+        static::saved(fn (Organisation $org) => \App\Support\LocalTime::forget($org->id));
+    }
+
+    public function localNow(): \Carbon\CarbonImmutable
+    {
+        return \App\Support\LocalTime::now($this->id);
+    }
+
+    public function localToday(): string
+    {
+        return \App\Support\LocalTime::today($this->id);
+    }
 
     public function departments(): HasMany
     {

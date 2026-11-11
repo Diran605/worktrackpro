@@ -124,6 +124,8 @@ class TimerService
 
             $endAt ??= now();
             $totalSeconds = $this->totalSeconds($plan, $endAt);
+            // Activity log start/end are wall-clock times in the organisation's timezone.
+            $localEnd = $endAt->copy()->setTimezone(\App\Support\LocalTime::timezoneFor($plan->organisation_id));
 
             $this->closeOpenPause($plan, $endAt);
 
@@ -137,8 +139,8 @@ class TimerService
                     'task_name' => $plan->task_name,
                     'project_client' => $plan->project_client,
                     'work_type' => $plan->work_type ?: 'direct',
-                    'start_time' => $endAt->copy()->subSeconds($totalSeconds)->format('H:i'),
-                    'end_time' => $endAt->format('H:i'),
+                    'start_time' => $localEnd->copy()->subSeconds($totalSeconds)->format('H:i'),
+                    'end_time' => $localEnd->format('H:i'),
                     'duration_minutes' => max(1, (int) ceil($totalSeconds / 60)),
                     'stop_reason' => $reason,
                     'is_verified' => $verified,
@@ -201,7 +203,7 @@ class TimerService
     {
         $session = WorkSession::query()
             ->where('user_id', $user->id)
-            ->whereDate('date', now()->toDateString())
+            ->whereDate('date', $user->localToday())
             ->where('status', SessionStatus::Active->value)
             ->first();
 

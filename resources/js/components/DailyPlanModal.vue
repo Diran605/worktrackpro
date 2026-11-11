@@ -110,6 +110,7 @@
 </template>
 
 <script setup>
+import { todayInOrg } from '../lib/dates';
 import { ref, reactive, watch, computed } from 'vue';
 import api from '../lib/axios';
 
@@ -128,7 +129,7 @@ const error = ref(null);
 
 const form = reactive({
     task_name: '',
-    date: new Date().toISOString().split('T')[0],
+    date: todayInOrg(),
     project_client: '',
     project_client_id: '',
     priority: 'medium',
@@ -164,7 +165,7 @@ watch(() => props.planData, (newData) => {
         form.notes = newData.notes || '';
     } else {
         form.task_name = '';
-        form.date = new Date().toISOString().split('T')[0];
+        form.date = todayInOrg();
         form.project_client = '';
         form.project_client_id = '';
         form.priority = 'medium';

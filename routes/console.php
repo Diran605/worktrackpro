@@ -19,5 +19,7 @@ Schedule::command('worktrack:timers:stop-abandoned')
 Schedule::command('worktrack:knowledge:stale-sections')
     ->weeklyOn(1, '08:00');
 
+// Hourly so every organisation gets its plans soon after its own midnight (safe to re-run).
 Schedule::command('worktrack:plans:generate-recurring')
-    ->dailyAt('00:00');
+    ->hourly()
+    ->withoutOverlapping();

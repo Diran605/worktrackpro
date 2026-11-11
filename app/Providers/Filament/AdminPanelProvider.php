@@ -65,6 +65,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                \App\Http\Middleware\SetFilamentTimezone::class,
             ])
             ->userMenuItems([
                 'portal' => \Filament\Navigation\MenuItem::make()

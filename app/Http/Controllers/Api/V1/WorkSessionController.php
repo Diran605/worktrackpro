@@ -25,7 +25,7 @@ class WorkSessionController extends Controller
     public function clockIn(Request $request): JsonResponse
     {
         $user = $request->user();
-        $today = now()->toDateString();
+        $today = $user->localToday();
 
         $existing = WorkSession::query()
             ->where('user_id', $user->id)
@@ -58,7 +58,7 @@ class WorkSessionController extends Controller
     public function clockOut(Request $request): JsonResponse
     {
         $user = $request->user();
-        $today = now()->toDateString();
+        $today = $user->localToday();
 
         $session = WorkSession::query()
             ->where('user_id', $user->id)
@@ -77,7 +77,7 @@ class WorkSessionController extends Controller
             ->where('user_id', $user->id)
             ->whereDate('date', $today)
             ->where('status', PlanStatus::Pending->value)
-            ->notLeftToday()
+            ->notLeftToday($user)
             ->orderBy('created_at')
             ->get();
 
@@ -107,7 +107,7 @@ class WorkSessionController extends Controller
     {
         $session = WorkSession::query()
             ->where('user_id', $request->user()->id)
-            ->whereDate('date', now()->toDateString())
+            ->whereDate('date', $request->user()->localToday())
             ->first();
 
         return response()->json(['data' => $session]);

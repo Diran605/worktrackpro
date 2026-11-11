@@ -78,7 +78,7 @@ class ReportController extends Controller
 
     private function parsePeriodDates(Request $request): array
     {
-        $date = $request->get('date') ? Carbon::parse($request->get('date')) : Carbon::now();
+        $date = $request->get('date') ? Carbon::parse($request->get('date')) : Carbon::parse($request->user()->localToday());
         $period = $request->get('period', 'week');
 
         $start = $date->copy();

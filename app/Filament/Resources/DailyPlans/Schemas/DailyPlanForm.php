@@ -46,7 +46,7 @@ class DailyPlanForm
 
                 DatePicker::make('date')
                     ->required()
-                    ->default(now()),
+                    ->default(fn () => $user->localToday()),
 
                 Select::make('project_client_id')
                     ->label('Project / Client')

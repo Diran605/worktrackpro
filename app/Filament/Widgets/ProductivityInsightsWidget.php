@@ -27,8 +27,8 @@ class ProductivityInsightsWidget extends TableWidget
 
     public function table(Table $table): Table
     {
-        $weekStart = Carbon::now()->startOfWeek()->format('Y-m-d');
-        $weekEnd = Carbon::now()->endOfWeek()->format('Y-m-d');
+        $weekStart = Carbon::parse(auth()->user()->localToday())->startOfWeek()->format('Y-m-d');
+        $weekEnd = Carbon::parse(auth()->user()->localToday())->endOfWeek()->format('Y-m-d');
         $user = auth()->user();
 
         return $table

@@ -27,11 +27,13 @@ class CarryOverController extends Controller
      */
     public function getPendingCarryOvers(Request $request): JsonResponse
     {
+        $user = $request->user();
+
         $plans = DailyPlan::query()
-            ->where('user_id', $request->user()->id)
+            ->where('user_id', $user->id)
             ->where('status', PlanStatus::Pending->value)
-            ->whereDate('date', '<', today())
-            ->notLeftToday()
+            ->whereDate('date', '<', $user->localToday())
+            ->notLeftToday($user)
             ->orderBy('date')
             ->get();
 
@@ -61,7 +63,7 @@ class CarryOverController extends Controller
         return match ($validated['decision']) {
             'leave' => $this->leave($plan),
             'cancel' => $this->cancel($plan),
-            'carry_over' => $this->carryOver($plan, $validated['priority'] ?? null),
+            'carry_over' => $this->carryOver($plan, $validated['priority'] ?? null, $user),
         };
     }
 
@@ -82,10 +84,12 @@ class CarryOverController extends Controller
         return response()->json(['data' => $plan->fresh()]);
     }
 
-    private function carryOver(DailyPlan $plan, ?string $priority): JsonResponse
+    private function carryOver(DailyPlan $plan, ?string $priority, \App\Models\User $user): JsonResponse
     {
         // Older plans come forward to today; today's plans (resolved at clock-out) move to the next working day.
-        $targetDate = $plan->date->lt(today()) ? today() : self::nextWorkingDay(today());
+        // "Today" is the organisation's date, not the server's.
+        $today = Carbon::parse($user->localToday());
+        $targetDate = $plan->date->lt($today) ? $today : self::nextWorkingDay($today);
 
         $new = DB::transaction(function () use ($plan, $priority, $targetDate) {
             $new = DailyPlan::create([

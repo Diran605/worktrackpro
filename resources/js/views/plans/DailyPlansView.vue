@@ -168,6 +168,7 @@
 </template>
 
 <script setup>
+import { todayInOrg } from '../../lib/dates';
 import { ref, reactive, onMounted, onUnmounted } from 'vue';
 import api from '../../lib/axios';
 import DailyPlanModal from '../../components/DailyPlanModal.vue';
@@ -180,7 +181,7 @@ const activeIntervals = new Map();
 const elapsedMap = reactive({}); // planId -> elapsed seconds
 
 const filters = reactive({
-    date: new Date().toISOString().split('T')[0] // Default to today
+    date: todayInOrg() // Default to today
 });
 
 const pagination = reactive({
