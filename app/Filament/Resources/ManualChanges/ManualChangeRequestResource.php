@@ -28,6 +28,9 @@ use Illuminate\Support\HtmlString;
  */
 class ManualChangeRequestResource extends Resource
 {
+    // canEdit()/canDelete() below are enforced on the pages too, not just used to hide buttons.
+    use \App\Filament\Concerns\EnforcesRecordAccess;
+
     protected static ?string $model = ManualChangeRequest::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentCheck;

@@ -27,6 +27,9 @@ use Illuminate\Validation\ValidationException;
  */
 class ManualSectionResource extends Resource
 {
+    // canEdit()/canDelete() below are enforced on the pages too, not just used to hide buttons.
+    use \App\Filament\Concerns\EnforcesRecordAccess;
+
     protected static ?string $model = ManualSection::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedQueueList;

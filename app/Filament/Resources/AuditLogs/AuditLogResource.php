@@ -18,6 +18,9 @@ use Illuminate\Database\Eloquent\Builder;
 
 class AuditLogResource extends Resource
 {
+    // canEdit()/canDelete() below are enforced on the pages too, not just used to hide buttons.
+    use \App\Filament\Concerns\EnforcesRecordAccess;
+
     protected static ?string $model = AuditLog::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShieldCheck;
