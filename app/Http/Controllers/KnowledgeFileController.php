@@ -37,6 +37,15 @@ class KnowledgeFileController extends Controller
             : Storage::disk(config('knowledge.disk'))->download($change->file_path, $change->file_name ?: 'document.docx');
     }
 
+    public function export(\App\Models\ManualExport $export): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        abort_unless($export->isReady(), 404);
+        $disk = Storage::disk(config('knowledge.disk'));
+        abort_unless($disk->exists($export->file_path), 404);
+
+        return $disk->download($export->file_path, $export->downloadName(), ['Content-Type' => 'application/pdf']);
+    }
+
     private function inline(string $path, string $name, string $mime): StreamedResponse
     {
         $disk = Storage::disk(config('knowledge.disk'));

@@ -103,7 +103,10 @@ Route::prefix('v1')->group(function () {
             Route::post('track-study', [ManualController::class, 'trackStudy']);
             Route::post('changes', [ManualChangeController::class, 'store'])->name('api.manual-changes.store');
             Route::post('import-docx', [ManualChangeController::class, 'importDocx']);
+            Route::post('export', [\App\Http\Controllers\Api\V1\ManualExportController::class, 'store']);
         });
+
+        Route::get('manual-exports/{export}', [\App\Http\Controllers\Api\V1\ManualExportController::class, 'show']);
 
         Route::prefix('manual-changes')->group(function () {
             Route::get('/', [ManualChangeController::class, 'index']);

@@ -99,6 +99,10 @@
                                          class="text-center px-4 py-2 rounded-xl text-sm font-semibold bg-teal-600 text-white hover:bg-teal-700">
                                 {{ manual.progress.read ? 'Continue reading' : 'Start reading' }}
                             </router-link>
+                            <button v-if="manual.tree.length" @click="showExport = true"
+                                    class="px-4 py-2 rounded-xl text-sm font-semibold bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
+                                ⬇ Download PDF
+                            </button>
                             <button @click="trackStudy" :disabled="tracking"
                                     class="px-4 py-2 rounded-xl text-sm font-semibold bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50">
                                 ⏱ Track study time
@@ -126,6 +130,8 @@
                 </div>
             </div>
         </template>
+
+        <ExportManualDialog v-if="showExport" :slug="slug" :tree="manual.tree" @close="showExport = false" />
     </div>
 </template>
 
@@ -134,6 +140,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '../../lib/axios';
 import ManualTree from '../../components/knowledge/ManualTree.vue';
+import ExportManualDialog from '../../components/knowledge/ExportManualDialog.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -150,6 +157,7 @@ const searchResults = ref([]);
 let searchTimer = null;
 
 const tracking = ref(false);
+const showExport = ref(false);
 const trackMessage = ref('');
 const trackError = ref(false);
 
