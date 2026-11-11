@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\OrganisationSettings\Tables;
 
-use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -14,6 +13,7 @@ class OrganisationSettingsTable
         return $table
             ->columns([
                 TextColumn::make('organisation.name')->label('Organisation')->searchable(),
+                TextColumn::make('organisation.timezone')->label('Time zone'),
                 TextColumn::make('abandoned_timer_hours')->label('Timer Hrs')->sortable(),
                 TextColumn::make('carry_over_flag_threshold')->label('Carry Threshold')->sortable(),
                 TextColumn::make('inbox_max_attachment_kb')->label('Max KB')->sortable(),
@@ -29,7 +29,6 @@ class OrganisationSettingsTable
             ])
             ->recordActions([
                 EditAction::make(),
-                DeleteAction::make()->visible(fn () => auth()->user()?->hasRole('super_admin') ?? false),
             ]);
     }
 }

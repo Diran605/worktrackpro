@@ -41,6 +41,10 @@ class DailyPlanResource extends JsonResource
                 'color' => $this->status->color(),
             ],
             'carry_over_count' => (int) ($this->carry_over_count ?? 0),
+            // Carried over at least the organisation's threshold number of times (Organisation Settings).
+            'carry_over_flagged' => (int) ($this->carry_over_count ?? 0) > 0
+                && (int) $this->carry_over_count >= max(1, (int) app(\App\Services\OrganisationSettingsService::class)
+                    ->forOrganisation((int) $this->organisation_id)->carry_over_flag_threshold),
             'created_at' => $this->created_at->toIso8601String(),
             'updated_at' => $this->updated_at->toIso8601String(),
             'assigned_by' => $this->whenLoaded('assignedByUser', function() {

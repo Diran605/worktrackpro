@@ -74,6 +74,16 @@ class DailyPlansTable
                     ->relationship('organisation', 'name')
                     ->label('Organisation')
                     ->hidden(fn () => !auth()->user()->hasRole('super_admin')),
+                \Filament\Tables\Filters\Filter::make('carried_over_too_often')
+                    ->label('Carried over too often')
+                    ->toggle()
+                    ->query(function (\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder {
+                        $threshold = (int) app(OrganisationSettingsService::class)
+                            ->forOrganisation((int) auth()->user()->organisation_id)
+                            ->carry_over_flag_threshold;
+
+                        return $query->where('carry_over_count', '>=', max($threshold, 1));
+                    }),
                 \Filament\Tables\Filters\Filter::make('date')
                     ->form([
                         \Filament\Forms\Components\DatePicker::make('date'),

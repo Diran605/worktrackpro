@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\OrganisationSettings;
 
-use App\Filament\Resources\OrganisationSettings\Pages\CreateOrganisationSetting;
 use App\Filament\Resources\OrganisationSettings\Pages\EditOrganisationSetting;
 use App\Filament\Resources\OrganisationSettings\Pages\ListOrganisationSettings;
 use App\Filament\Resources\OrganisationSettings\Schemas\OrganisationSettingForm;
@@ -30,6 +29,17 @@ class OrganisationSettingResource extends Resource
         return auth()->user()?->hasRole('super_admin') || (auth()->user()?->hasRole('admin') ?? false);
     }
 
+    /** Settings are created automatically (one per organisation), never by hand. */
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
+    {
+        return false;
+    }
+
     public static function form(Schema $schema): Schema
     {
         return OrganisationSettingForm::configure($schema);
@@ -44,7 +54,6 @@ class OrganisationSettingResource extends Resource
     {
         return [
             'index' => ListOrganisationSettings::route('/'),
-            'create' => CreateOrganisationSetting::route('/create'),
             'edit' => EditOrganisationSetting::route('/{record}/edit'),
         ];
     }

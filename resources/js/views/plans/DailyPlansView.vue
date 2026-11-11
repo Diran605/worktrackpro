@@ -79,6 +79,12 @@
                                 <span :class="getPriorityBadgeClass(plan.priority.color)" class="px-2.5 py-0.5 rounded-full text-xs font-medium border border-transparent">
                                     {{ plan.priority.label }} Priority
                                 </span>
+                                <span v-if="plan.carry_over_count > 0"
+                                      class="px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                      :class="plan.carry_over_flagged ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'"
+                                      :title="plan.carry_over_flagged ? 'This task keeps getting pushed back. Consider breaking it down or asking for help.' : ''">
+                                    {{ plan.carry_over_flagged ? '⚠ ' : '' }}Carried over {{ plan.carry_over_count }}×
+                                </span>
                             </div>
                             
                             <div class="text-right ml-4 border-l border-gray-200 pl-4">
