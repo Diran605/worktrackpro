@@ -64,7 +64,6 @@ final class Permissions
 
     public const SUPER_ADMIN_ONLY = [
         self::MANAGE_SYSTEM_SETTINGS,
-        self::MANAGE_LETTERHEADS,
     ];
 
     public const CORE_ROLES = ['super_admin', 'admin', 'worker'];

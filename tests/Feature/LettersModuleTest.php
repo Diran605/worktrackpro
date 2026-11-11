@@ -99,6 +99,24 @@ class LettersModuleTest extends TestCase
             ->assertHasErrors(['data.worker_id']);
     }
 
+    public function test_admins_manage_letterheads_but_a_letters_only_role_cannot(): void
+    {
+        $admin = $this->makeUser('admin');
+        $this->actingAs($admin)
+            ->get(\App\Filament\Resources\Letters\CompanyLetterheadResource::getUrl('index'))
+            ->assertOk();
+
+        // A custom role that can issue letters but not change the letterhead
+        $clerk = $this->makeUser('worker', $admin->organisation);
+        $role = \App\Models\Role::create(['name' => 'hr_clerk', 'guard_name' => 'web', 'organisation_id' => $admin->organisation_id]);
+        $role->givePermissionTo(\App\Support\Permissions::MANAGE_LETTERS);
+        $clerk->assignRole($role);
+
+        $this->actingAs($clerk);
+        $this->get(\App\Filament\Pages\GenerateLetter::getUrl())->assertOk();
+        $this->get(\App\Filament\Resources\Letters\CompanyLetterheadResource::getUrl('index'))->assertForbidden();
+    }
+
     public function test_only_one_letterhead_is_in_use(): void
     {
         $admin = $this->makeUser('admin');
