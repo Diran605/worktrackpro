@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Services\StatsService;
+use App\Support\Permissions;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -18,20 +19,20 @@ class DashboardController extends Controller
         $user = $request->user();
         
         $weekStartInput = $request->query('week_start');
-        $weekStart = $weekStartInput ? Carbon::parse($weekStartInput)->startOfWeek() : Carbon::now()->startOfWeek();
+        $weekStart = $weekStartInput ? Carbon::parse($weekStartInput)->startOfWeek() : Carbon::parse($user->localToday())->startOfWeek();
 
         $response = [
             'week_label' => $weekStart->format('M j') . ' - ' . $weekStart->copy()->endOfWeek()->format('M j, Y'),
             'personal' => $this->statsService->getPersonalWeeklyStats($user, $weekStart),
         ];
 
-        // If the user has Admin rights to view team data, inject department stats
-        if ($user->can('view-team-data')) {
+        // Admins (team stats permission) get their department's numbers
+        if ($user->can(Permissions::VIEW_TEAM_STATS)) {
             $response['department'] = $this->statsService->getDepartmentWeeklyStats($user, $weekStart);
         }
 
-        // If the user has Super Admin rights to view all data, inject organisation stats
-        if ($user->can('view-all-data')) {
+        // Super admins get the whole organisation
+        if ($user->hasRole('super_admin')) {
             $response['organisation'] = $this->statsService->getOrganisationWeeklyStats($user, $weekStart);
         }
 

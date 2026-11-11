@@ -22,6 +22,7 @@ class UserResource extends JsonResource
                     'id' => $this->organisation->id,
                     'name' => $this->organisation->name,
                     'slug' => $this->organisation->slug,
+                    'timezone' => $this->organisation->timezone ?: config('app.timezone'),
                     'primary_color' => $this->organisation->primary_color,
                     'secondary_color' => $this->organisation->secondary_color,
                     'logo' => $this->organisation->logo ? asset('storage/' . $this->organisation->logo) : null,
@@ -39,6 +40,11 @@ class UserResource extends JsonResource
             'permissions' => $this->whenLoaded('permissions', function() {
                 return $this->getAllPermissions()->pluck('name');
             }),
+            // Only for the signed-in user (login / me): whether to show the Command Center link.
+            'can_access_admin' => $this->when(
+                $request->user()?->id === $this->id || $request->routeIs('api.auth.login'),
+                fn () => $this->resource->canAccessPanel(\Filament\Facades\Filament::getPanel('admin'))
+            ),
         ];
     }
 }

@@ -58,6 +58,13 @@
                                 <svg class="w-4 h-4 mr-1 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                                 {{ plan.project_client }}
                             </p>
+                            <router-link v-if="plan.system"
+                                         :to="plan.manual_change_request_id
+                                            ? { name: 'ManualEditor', params: { slug: plan.system.slug }, query: { change: plan.manual_change_request_id } }
+                                            : { name: 'SystemDetail', params: { slug: plan.system.slug }, query: { tab: 'manual' } }"
+                                         class="text-sm text-teal-700 hover:underline mt-1 inline-flex items-center">
+                                📘 {{ plan.manual_change_request_id ? 'Open the draft' : `Open the ${plan.system.name} manual` }}
+                            </router-link>
                         </div>
                         
                         <div class="flex items-center gap-4">
@@ -72,6 +79,12 @@
                                 <span :class="getPriorityBadgeClass(plan.priority.color)" class="px-2.5 py-0.5 rounded-full text-xs font-medium border border-transparent">
                                     {{ plan.priority.label }} Priority
                                 </span>
+                                <span v-if="plan.carry_over_count > 0"
+                                      class="px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                      :class="plan.carry_over_flagged ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'"
+                                      :title="plan.carry_over_flagged ? 'This task keeps getting pushed back. Consider breaking it down or asking for help.' : ''">
+                                    {{ plan.carry_over_flagged ? '⚠ ' : '' }}Carried over {{ plan.carry_over_count }}×
+                                </span>
                             </div>
                             
                             <div class="text-right ml-4 border-l border-gray-200 pl-4">
@@ -83,7 +96,7 @@
                             <div class="flex items-center ml-4 gap-2">
                                 <!-- Timer Controls -->
                                 <div class="flex items-center gap-2 mr-2">
-                                    <div class="text-xs font-mono text-gray-600 w-[64px] text-right">
+                                    <div class="text-xs font-mono text-gray-600 w-16 text-right">
                                         {{ formatElapsed(plan.id) }}
                                     </div>
 
@@ -161,6 +174,7 @@
 </template>
 
 <script setup>
+import { todayInOrg } from '../../lib/dates';
 import { ref, reactive, onMounted, onUnmounted } from 'vue';
 import api from '../../lib/axios';
 import DailyPlanModal from '../../components/DailyPlanModal.vue';
@@ -173,7 +187,7 @@ const activeIntervals = new Map();
 const elapsedMap = reactive({}); // planId -> elapsed seconds
 
 const filters = reactive({
-    date: new Date().toISOString().split('T')[0] // Default to today
+    date: todayInOrg() // Default to today
 });
 
 const pagination = reactive({

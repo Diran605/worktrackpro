@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\ActivityLog;
 use App\Models\User;
+use App\Support\Permissions;
 
 class ActivityLogPolicy
 {
@@ -40,7 +41,7 @@ class ActivityLogPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('manage-own-work');
+        return $user->can(Permissions::MANAGE_OWN_WORK);
     }
 
     /**

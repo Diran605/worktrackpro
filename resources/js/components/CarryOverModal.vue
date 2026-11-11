@@ -6,7 +6,11 @@
                 <div class="p-5 border-b border-gray-100 flex items-center justify-between">
                     <div>
                         <h3 class="text-lg font-bold text-gray-900">Resolve incomplete tasks</h3>
-                        <p class="text-sm text-gray-500 mt-0.5">Choose what to do for each pending task before clocking out.</p>
+                        <p class="text-sm text-gray-500 mt-0.5">Choose what to do with each unfinished task.</p>
+                        <p class="text-xs text-gray-400 mt-1">
+                            <strong>Carry Over</strong> moves today's task to the next working day (older tasks move to today).
+                            <strong>Leave for now</strong> keeps it pending without moving it.
+                        </p>
                     </div>
                     <button @click="$emit('close')" class="text-gray-400 hover:text-gray-700">✕</button>
                 </div>

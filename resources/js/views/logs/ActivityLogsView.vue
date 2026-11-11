@@ -71,7 +71,7 @@
                             
                             <div class="flex gap-4 mt-2">
                                 <span :class="getWorkTypeBadge(log.work_type.color)" class="px-2 py-0.5 rounded text-xs font-medium border border-transparent shadow-sm">
-                                    Type: {{ log.work_type.label }}
+                                    Type: {{ log.work_type_name || log.work_type.label }}
                                 </span>
                                 <span :class="getCompletionBadge(log.completion_type.color)" class="px-2 py-0.5 rounded text-xs font-medium border border-transparent shadow-sm">
                                     {{ log.completion_type.label }}
@@ -119,6 +119,7 @@
 </template>
 
 <script setup>
+import { todayInOrg } from '../../lib/dates';
 import { ref, reactive, onMounted } from 'vue';
 import api from '../../lib/axios';
 import ActivityLogModal from '../../components/ActivityLogModal.vue';
@@ -129,7 +130,7 @@ const isModalOpen = ref(false);
 const editingLog = ref(null);
 
 const filters = reactive({
-    date: new Date().toISOString().split('T')[0],
+    date: todayInOrg(),
     work_type: ''
 });
 

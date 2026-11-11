@@ -19,22 +19,18 @@ class InboxAcknowledgeController extends Controller
             ->where('message_id', $id)
             ->firstOrFail();
 
-        $message = $recipient->message()->with('attachments')->first();
+        $message = $recipient->message;
 
-        $pdfPath = $message?->attachments?->first()?->file_path;
+        // The letter is linked to its message directly (it may have been resent several times).
+        $letter = $message?->generated_letter_id
+            ? GeneratedLetter::query()->where('worker_id', $user->id)->find($message->generated_letter_id)
+            : null;
 
-        if ($pdfPath) {
-            $letter = GeneratedLetter::query()
-                ->where('worker_id', $user->id)
-                ->where('pdf_path', $pdfPath)
-                ->first();
-
-            if ($letter && !$letter->acknowledged_at) {
-                $letter->update([
-                    'acknowledged_at' => now(),
-                    'acknowledged_by' => $user->id,
-                ]);
-            }
+        if ($letter && !$letter->acknowledged_at) {
+            $letter->update([
+                'acknowledged_at' => now(),
+                'acknowledged_by' => $user->id,
+            ]);
         }
 
         if (!$recipient->read_at) {
@@ -44,4 +40,3 @@ class InboxAcknowledgeController extends Controller
         return response()->json(['message' => 'Acknowledged.']);
     }
 }
-

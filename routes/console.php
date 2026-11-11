@@ -8,11 +8,18 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+// Runs often; each organisation's own "abandoned_session_close_time" setting decides when its sessions close.
 Schedule::command('worktrack:sessions:close-abandoned')
-    ->dailyAt(env('WORKTRACK_ABANDONED_SESSION_CLOSE_TIME', '20:00'));
+    ->everyFifteenMinutes()
+    ->withoutOverlapping();
 
 Schedule::command('worktrack:timers:stop-abandoned')
     ->everyThirtyMinutes();
 
+Schedule::command('worktrack:knowledge:stale-sections')
+    ->weeklyOn(1, '08:00');
+
+// Hourly so every organisation gets its plans soon after its own midnight (safe to re-run).
 Schedule::command('worktrack:plans:generate-recurring')
-    ->dailyAt('00:00');
+    ->hourly()
+    ->withoutOverlapping();

@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\DailyPlan;
+use App\Models\Organisation;
 use App\Models\PersonalRecurringTask;
 use App\Models\TaskTemplate;
 use App\Models\User;
@@ -12,16 +13,34 @@ class GenerateRecurringPlans extends Command
 {
     protected $signature = 'worktrack:plans:generate-recurring {--date=}';
 
-    protected $description = 'Generate daily plans from task templates and personal recurring tasks';
+    protected $description = 'Generate daily plans from task templates and personal recurring tasks (for each organisation\'s own date)';
 
+    /**
+     * Runs hourly. Each organisation gets plans for its own local date, so a team on UTC+1 has
+     * them shortly after its midnight. Re-running is safe: existing plans are never duplicated.
+     */
     public function handle(): int
     {
-        $date = $this->option('date') ?: now()->toDateString();
+        $generated = 0;
+
+        foreach (Organisation::query()->where('is_active', true)->get() as $organisation) {
+            $date = $this->option('date') ?: $organisation->localToday();
+            $generated += $this->generateFor($organisation->id, $date);
+        }
+
+        $this->info("Generated {$generated} plan(s).");
+
+        return Command::SUCCESS;
+    }
+
+    private function generateFor(int $organisationId, string $date): int
+    {
         $dayOfWeek = (int) now()->parse($date)->dayOfWeek; // 0 (Sun) - 6 (Sat)
 
         $generated = 0;
 
         $templates = TaskTemplate::query()
+            ->where('organisation_id', $organisationId)
             ->where('is_active', true)
             ->get();
 
@@ -50,6 +69,7 @@ class GenerateRecurringPlans extends Command
                     'date' => $date,
                     'task_name' => $template->title,
                     'priority' => 'medium',
+                    'work_type' => $template->work_type ?: 'direct',
                     'expected_duration_minutes' => (int) $template->expected_duration_minutes,
                     'status' => 'pending',
                     'is_assigned' => true,
@@ -58,10 +78,16 @@ class GenerateRecurringPlans extends Command
 
                 $generated++;
             }
+
+            // One-time templates run once, then switch off (previously they generated a plan every day).
+            if ($template->recurrence_type === 'one_time') {
+                $template->update(['is_active' => false]);
+            }
         }
 
         $personal = PersonalRecurringTask::query()
             ->where('is_active', true)
+            ->whereHas('user', fn ($q) => $q->where('organisation_id', $organisationId))
             ->with('user:id,organisation_id,is_active')
             ->get();
 
@@ -90,6 +116,7 @@ class GenerateRecurringPlans extends Command
                 'date' => $date,
                 'task_name' => $task->title,
                 'priority' => $task->priority,
+                'work_type' => $task->work_type ?: 'direct',
                 'expected_duration_minutes' => (int) $task->expected_duration_minutes,
                 'status' => 'pending',
                 'is_assigned' => false,
@@ -99,9 +126,7 @@ class GenerateRecurringPlans extends Command
             $generated++;
         }
 
-        $this->info("Generated {$generated} plan(s) for {$date}.");
-
-        return Command::SUCCESS;
+        return $generated;
     }
 
     private function isDue(string $recurrenceType, ?int $recurrenceDay, int $dayOfWeek): bool

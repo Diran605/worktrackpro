@@ -27,7 +27,8 @@ class CompanyLetterheadResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->hasPermissionTo('manage_letters') ?? false;
+        // Separate from manage_letters, so a custom role can issue letters without changing the letterhead.
+        return auth()->user()?->can(\App\Support\Permissions::MANAGE_LETTERHEADS) ?? false;
     }
 
     public static function form(Schema $schema): Schema

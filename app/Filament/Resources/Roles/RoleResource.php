@@ -16,12 +16,17 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use App\Support\Permissions;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
+use App\Models\Role;
 
 class RoleResource extends Resource
 {
+    // canEdit()/canDelete() below are enforced on the pages too, not just used to hide buttons.
+    use \App\Filament\Concerns\EnforcesRecordAccess;
+
     protected static ?string $model = Role::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShieldCheck;
@@ -32,19 +37,64 @@ class RoleResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return auth()->user()?->hasPermissionTo('manage_roles') ?? false;
+        return auth()->user()?->can(Permissions::MANAGE_ROLES) ?? false;
+    }
+
+    /**
+     * Core roles are shared by every organisation, so only a super admin may change them.
+     * Organisation admins manage their own organisation's custom roles.
+     */
+    public static function canEdit(Model $record): bool
+    {
+        $user = auth()->user();
+
+        if ($record->name === 'super_admin') {
+            return false;
+        }
+
+        if ($user?->hasRole('super_admin')) {
+            return true;
+        }
+
+        return $record->organisation_id !== null
+            && $record->organisation_id === $user?->organisation_id;
     }
 
     public static function canDelete(Model $record): bool
     {
-        // Protect the 3 core roles
-        return !in_array($record->name, ['super_admin', 'admin', 'worker']);
+        return !in_array($record->name, Permissions::CORE_ROLES, true) && static::canEdit($record);
     }
 
-    public static function canEdit(Model $record): bool
+    /**
+     * Super admins see every role; organisation admins see core roles plus their own custom roles.
+     */
+    public static function getEloquentQuery(): Builder
     {
-        // Can't edit super_admin role
-        return $record->name !== 'super_admin';
+        $query = parent::getEloquentQuery();
+        $user = auth()->user();
+
+        if ($user?->hasRole('super_admin')) {
+            return $query;
+        }
+
+        return $query->where(fn (Builder $q) => $q
+            ->whereNull('organisation_id')
+            ->orWhere('organisation_id', $user?->organisation_id));
+    }
+
+    /**
+     * Permissions the current user may hand out. Non-super-admins can only grant what they hold,
+     * which stops an admin from building a role more powerful than their own.
+     */
+    public static function grantablePermissionNames(): array
+    {
+        $user = auth()->user();
+
+        if (!$user || $user->hasRole('super_admin')) {
+            return Permission::pluck('name')->all();
+        }
+
+        return $user->getAllPermissions()->pluck('name')->all();
     }
 
     public static function form(Schema $schema): Schema
@@ -65,7 +115,11 @@ class RoleResource extends Resource
                     ->description('Select which permissions this role should have')
                     ->schema([
                         CheckboxList::make('permissions')
-                            ->relationship('permissions', 'name')
+                            ->relationship(
+                                'permissions',
+                                'name',
+                                fn (Builder $query) => $query->whereIn('name', static::grantablePermissionNames())
+                            )
                             ->columns(2)
                             ->descriptions([
                                 'manage_users' => 'Create, edit, and deactivate users',
@@ -79,6 +133,18 @@ class RoleResource extends Resource
                                 'view_audit_logs' => 'Access the audit trail',
                                 'view_own_data' => 'View own plans and activity logs',
                                 'manage_own_work' => 'Create own plans and log activities',
+                                'manage_attendance' => 'View and manage attendance',
+                                'reopen_sessions' => 'Approve session reopen requests',
+                                'manage_task_templates' => 'Create recurring task templates',
+                                'view_inbox' => 'Use the inbox',
+                                'send_broadcast' => 'Send broadcast messages',
+                                'manage_letters' => 'Generate and issue letters',
+                                'manage_letterheads' => 'Manage company letterheads',
+                                'manage_system_settings' => 'Change organisation settings',
+                                'view_kb' => 'Read the knowledge base (systems & manuals)',
+                                'contribute_kb' => 'Write or upload manual content (needs owner approval)',
+                                'manage_systems' => 'Create and manage systems in the registry',
+                                'approve_kb' => 'Approve manual changes for any system in the organisation',
                             ])
                             ->bulkToggleable(),
                     ]),
@@ -99,6 +165,11 @@ class RoleResource extends Resource
                         'worker' => 'success',
                         default => 'info',
                     }),
+                TextColumn::make('organisation.name')
+                    ->label('Scope')
+                    ->default('All organisations')
+                    ->badge()
+                    ->color('gray'),
                 TextColumn::make('permissions_count')
                     ->counts('permissions')
                     ->label('Permissions')

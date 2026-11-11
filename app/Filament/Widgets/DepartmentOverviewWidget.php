@@ -22,7 +22,7 @@ class DepartmentOverviewWidget extends StatsOverviewWidget
     protected function getStats(): array
     {
         $user = auth()->user();
-        $stats = app(StatsService::class)->getDepartmentWeeklyStats($user, Carbon::now()->startOfWeek());
+        $stats = app(StatsService::class)->getDepartmentWeeklyStats($user, Carbon::parse($user->localToday())->startOfWeek());
 
         $totalHours = round(($stats['total_team_minutes'] ?? 0) / 60, 1);
         $direct = $stats['work_breakdown']['direct'] ?? 0;

@@ -28,20 +28,7 @@ class DatabaseSeeder extends Seeder
             'secondary_color' => '#6366f1',
         ]);
 
-        // 3. Seed Default Work Types for this org
-        $workTypes = [
-            ['name' => 'Direct', 'color' => 'success'],
-            ['name' => 'Indirect', 'color' => 'warning'],
-            ['name' => 'Growth', 'color' => 'info'],
-        ];
-        foreach ($workTypes as $wt) {
-            WorkType::create([
-                'organisation_id' => $org->id,
-                'name' => $wt['name'],
-                'color' => $wt['color'],
-                'is_active' => true,
-            ]);
-        }
+        // 3. Default work types (Direct / Indirect / Growth) are created automatically with the organisation.
 
         // 4. Seed Default Project/Clients for this org
         $clients = [

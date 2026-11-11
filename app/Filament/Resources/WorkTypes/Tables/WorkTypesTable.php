@@ -19,6 +19,11 @@ class WorkTypesTable
                 TextColumn::make('name')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('category')
+                    ->label('Counts as')
+                    ->badge()
+                    ->formatStateUsing(fn ($state) => $state instanceof \App\Enums\WorkType ? $state->label() : ucfirst((string) $state))
+                    ->color(fn ($state) => $state instanceof \App\Enums\WorkType ? $state->color() : 'gray'),
                 TextColumn::make('color')
                     ->badge()
                     ->color(fn (string $state): string => $state),

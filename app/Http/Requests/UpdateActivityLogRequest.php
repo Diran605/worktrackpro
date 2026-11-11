@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Enums\WorkType;
 use App\Enums\CompletionType;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
 
 class UpdateActivityLogRequest extends FormRequest
@@ -21,6 +22,10 @@ class UpdateActivityLogRequest extends FormRequest
             'task_name' => ['sometimes', 'required', 'string', 'max:255'],
             'project_client' => ['nullable', 'string', 'max:255'],
             'work_type' => ['sometimes', 'required', new Enum(WorkType::class)],
+            'work_type_id' => ['nullable', 'integer', Rule::exists('work_types', 'id')
+                ->where('organisation_id', $this->user()->organisation_id)
+                ->where('is_active', true)
+                ->whereNull('deleted_at')],
             'start_time' => ['nullable', 'date_format:H:i:s,H:i'],
             'end_time' => ['nullable', 'date_format:H:i:s,H:i'],
             'duration_minutes' => ['nullable', 'integer', 'min:1'],

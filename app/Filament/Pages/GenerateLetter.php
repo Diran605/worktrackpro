@@ -5,14 +5,19 @@ namespace App\Filament\Pages;
 use App\Models\LetterTemplate;
 use App\Models\User;
 use App\Services\LetterService;
-use Filament\Forms\Components\KeyValue;
+use App\Support\LetterPlaceholders;
+use App\Support\Permissions;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
-use Filament\Schemas\Components\Section;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Forms\Contracts\HasForms;
-use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\ValidationException;
 
 class GenerateLetter extends Page implements HasForms
 {
@@ -28,7 +33,7 @@ class GenerateLetter extends Page implements HasForms
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->hasPermissionTo('manage_letters') ?? false;
+        return auth()->user()?->can(Permissions::MANAGE_LETTERS) ?? false;
     }
 
     public function mount(): void
@@ -38,88 +43,54 @@ class GenerateLetter extends Page implements HasForms
 
     public function form(Schema $form): Schema
     {
-        $user = auth()->user();
+        $issuer = auth()->user();
 
-        $updateFields = function (callable $get, callable $set) use ($user) {
-            $workerId = $get('worker_id');
-            $templateId = $get('letter_template_id');
-
-            if (!$templateId) return;
-
-            $template = LetterTemplate::find($templateId);
-            if (!$template) return;
-
-            $subject = $template->subject_template;
-            $body = $template->body_template;
-
-            if ($workerId) {
-                $worker = User::with('department')->find($workerId);
-                if ($worker) {
-                    $letterhead = \App\Models\CompanyLetterhead::where('organisation_id', $user->organisation_id)->where('is_active', true)->orderByDesc('id')->first();
-
-                    $placeholders = [
-                        '{{worker_name}}' => $worker->name,
-                        '{{worker_department}}' => $worker->department?->name ?? '',
-                        '{{date}}' => now()->toDateString(),
-                        '{{admin_name}}' => $user->name,
-                        '{{company_name}}' => $letterhead?->company_name ?? ($user->organisation?->name ?? ''),
-                    ];
-
-                    $subject = strtr($subject, $placeholders);
-                    $body = strtr($body, $placeholders);
-                }
+        // Load the template text with the placeholders filled in for the chosen employee.
+        $loadTemplate = function (callable $get, callable $set) use ($issuer) {
+            $template = $this->templateQuery()->find($get('letter_template_id'));
+            if (!$template) {
+                return;
             }
-            $set('subject', $subject);
-            $set('body', $body);
+
+            $worker = $this->workerQuery()->with('department')->find($get('worker_id'));
+
+            $set('subject', $worker ? LetterPlaceholders::fill($template->subject_template, $worker, $issuer) : $template->subject_template);
+            $set('body', $worker ? LetterPlaceholders::fill($template->body_template, $worker, $issuer, html: true) : $template->body_template);
         };
 
         return $form
             ->schema([
-                Section::make('Step 1: Selection')
-                    ->description('Select who you are writing to and which template to use.')
+                Section::make('Step 1: Who and which template')
+                    ->description('Choose the employee and a starting template. The template text is loaded into Step 2 with the employee\'s details filled in. Changing either choice reloads the text.')
                     ->aside()
                     ->schema([
                         Select::make('worker_id')
-                            ->label('Which employee is this for?')
-                            ->options(function () use ($user) {
-                                $q = User::query()->where('is_active', true);
-                                if (!$user->hasRole('super_admin')) {
-                                    $q->where('organisation_id', $user->organisation_id);
-                                }
-                                return $q->orderBy('name')->pluck('name', 'id');
-                            })
+                            ->label('Employee')
+                            ->options(fn () => $this->workerQuery()->orderBy('name')->pluck('name', 'id'))
                             ->searchable()
-                            ->loadingMessage('Loading employees...')
                             ->required()
                             ->live()
-                            ->afterStateUpdated($updateFields),
+                            ->afterStateUpdated($loadTemplate),
                         Select::make('letter_template_id')
-                            ->label('Starting Template')
-                            ->options(function () use ($user) {
-                                $q = LetterTemplate::query();
-                                if ($user->hasRole('super_admin')) {
-                                    return $q->orderBy('name')->pluck('name', 'id');
-                                }
-                                return $q->whereNull('organisation_id')
-                                    ->orWhere('organisation_id', $user->organisation_id)
-                                    ->orderBy('name')
-                                    ->pluck('name', 'id');
-                            })
+                            ->label('Template')
+                            ->options(fn () => $this->templateQuery()->orderBy('name')->pluck('name', 'id'))
                             ->searchable()
                             ->required()
                             ->live()
-                            ->afterStateUpdated($updateFields),
+                            ->afterStateUpdated($loadTemplate)
+                            ->helperText('Manage templates under Letters → Letter Templates.'),
                     ]),
 
-                Section::make('Step 2: Edit Content')
-                    ->description('The template text has been loaded below. Edit it freely before generating the PDF.')
+                Section::make('Step 2: Check and edit the letter')
+                    ->description('Edit freely. Replace any remaining markers such as [SALARY] or {{custom_field_1}}; the letter cannot be sent while a {{…}} placeholder is left in it.')
                     ->aside()
                     ->schema([
-                        \Filament\Forms\Components\TextInput::make('subject')
-                            ->label('Letter Subject')
-                            ->required(),
-                        \Filament\Forms\Components\RichEditor::make('body')
-                            ->label('Letter Body')
+                        TextInput::make('subject')
+                            ->label('Subject')
+                            ->required()
+                            ->maxLength(255),
+                        RichEditor::make('body')
+                            ->label('Letter')
                             ->required(),
                     ]),
             ])
@@ -130,18 +101,40 @@ class GenerateLetter extends Page implements HasForms
     {
         $state = $this->form->getState();
 
-        $template = LetterTemplate::findOrFail($state['letter_template_id']);
-        $worker = User::with('department')->findOrFail($state['worker_id']);
-        $generatedBy = auth()->user();
+        $leftovers = LetterPlaceholders::unfilled($state['subject'] . ' ' . $state['body']);
+        if ($leftovers !== []) {
+            throw ValidationException::withMessages([
+                'data.body' => 'Replace these placeholders before sending: ' . implode(', ', $leftovers),
+            ]);
+        }
 
-        $letterService->generateAndDeliver($template, $worker, $generatedBy, $state['subject'], $state['body']);
+        $template = $this->templateQuery()->findOrFail($state['letter_template_id']);
+        $worker = $this->workerQuery()->with('department')->findOrFail($state['worker_id']);
 
-        \Filament\Notifications\Notification::make()
-            ->title('Letter generated and delivered to inbox.')
+        $letterService->generateAndDeliver($template, $worker, auth()->user(), $state['subject'], $state['body']);
+
+        Notification::make()
+            ->title('Letter generated')
+            ->body("It has been delivered to {$worker->name}'s inbox. You can download it from Issued Letters.")
             ->success()
             ->send();
 
         $this->form->fill();
     }
-}
 
+    /** Letters go to active employees of your own organisation (the letterhead is per organisation). */
+    private function workerQuery(): Builder
+    {
+        return User::query()
+            ->where('is_active', true)
+            ->where('organisation_id', auth()->user()->organisation_id);
+    }
+
+    /** System templates plus your organisation's own. */
+    private function templateQuery(): Builder
+    {
+        return LetterTemplate::query()->where(fn (Builder $query) => $query
+            ->whereNull('organisation_id')
+            ->orWhere('organisation_id', auth()->user()->organisation_id));
+    }
+}

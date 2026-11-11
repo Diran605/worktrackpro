@@ -76,7 +76,17 @@ class TeamController extends Controller
      */
     public function toggleStatus(Request $request, User $user)
     {
-        $this->authorize('manage-users');
+        $admin = $request->user();
+
+        abort_unless($admin->can(\App\Support\Permissions::MANAGE_USERS), 403);
+
+        // Only within your own organisation; department admins only within their department.
+        abort_if($user->organisation_id !== $admin->organisation_id, 403);
+        abort_if(
+            !$admin->hasRole('super_admin') && $user->department_id !== $admin->department_id,
+            403
+        );
+        abort_if($user->hasRole('super_admin') && !$admin->hasRole('super_admin'), 403);
 
         // Prevent deactivating yourself
         if ($user->id === $request->user()->id) {

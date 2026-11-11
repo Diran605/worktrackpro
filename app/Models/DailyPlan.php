@@ -14,7 +14,7 @@ use App\Traits\Auditable;
 
 class DailyPlan extends Model
 {
-    use HasFactory, Auditable, SoftDeletes;
+    use HasFactory, Auditable, SoftDeletes, \App\Traits\HasWorkTypeCategory;
 
     protected $fillable = [
         'user_id',
@@ -37,16 +37,38 @@ class DailyPlan extends Model
         'personal_recurring_task_id',
         'carried_from_plan_id',
         'carry_over_count',
+        'carry_over_decision',
+        'carry_over_decided_at',
+        'work_type',
+        'work_type_id',
+        'system_id',
+        'manual_change_request_id',
     ];
 
     protected $casts = [
         'date' => 'date',
+        'carry_over_decided_at' => 'datetime',
         'priority' => Priority::class,
         'status' => PlanStatus::class,
         'timer_status' => TimerStatus::class,
         'timer_started_at' => 'datetime',
         'is_assigned' => 'boolean',
     ];
+
+    /**
+     * Excludes plans the worker chose to "leave for now" today, so they don't block clock-out again.
+     */
+    public function scopeNotLeftToday($query, User $user)
+    {
+        // Stored timestamps are UTC; "today" is the organisation's day.
+        $startOfToday = \App\Support\LocalTime::startOfToday($user->organisation_id);
+
+        return $query->where(function ($q) use ($startOfToday) {
+            $q->whereNull('carry_over_decided_at')
+                ->orWhere('carry_over_decision', '!=', 'leave')
+                ->orWhere('carry_over_decided_at', '<', $startOfToday);
+        });
+    }
 
     public function user(): BelongsTo
     {
@@ -81,6 +103,16 @@ class DailyPlan extends Model
     public function assignedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_by');
+    }
+
+    public function system(): BelongsTo
+    {
+        return $this->belongsTo(System::class);
+    }
+
+    public function manualChangeRequest(): BelongsTo
+    {
+        return $this->belongsTo(ManualChangeRequest::class);
     }
 
     public function projectClient(): BelongsTo

@@ -8,6 +8,9 @@ export const useInboxStore = defineStore('inbox', {
         loading: false,
         error: null,
         selected: null,
+        // For letters: { requires_acknowledgement, acknowledged_at } (null for other messages)
+        selectedLetter: null,
+        acknowledging: false,
     }),
 
     actions: {
@@ -39,11 +42,27 @@ export const useInboxStore = defineStore('inbox', {
             try {
                 const res = await api.get(`/inbox/${id}`);
                 this.selected = res.data.data;
+                this.selectedLetter = res.data.letter || null;
                 await this.fetchUnreadCount();
             } catch (e) {
                 this.error = 'Failed to open message.';
             } finally {
                 this.loading = false;
+            }
+        },
+
+        async acknowledgeLetter() {
+            if (!this.selected) return false;
+            this.acknowledging = true;
+            try {
+                await api.post(`/inbox/${this.selected.id}/acknowledge`);
+                if (this.selectedLetter) this.selectedLetter.acknowledged_at = new Date().toISOString();
+                return true;
+            } catch (e) {
+                this.error = e.response?.data?.message || 'Could not acknowledge the letter.';
+                return false;
+            } finally {
+                this.acknowledging = false;
             }
         },
 

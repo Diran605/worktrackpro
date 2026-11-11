@@ -42,6 +42,7 @@ class AdminPanelProvider extends PanelProvider
                 'Configuration',
                 'Communication',
                 'Letters',
+                'Knowledge',
                 'Security',
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
@@ -64,6 +65,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                \App\Http\Middleware\SetFilamentTimezone::class,
             ])
             ->userMenuItems([
                 'portal' => \Filament\Navigation\MenuItem::make()

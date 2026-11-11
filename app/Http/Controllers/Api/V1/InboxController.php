@@ -50,7 +50,22 @@ class InboxController extends Controller
             ->with(['sender:id,name', 'attachments'])
             ->findOrFail($id);
 
-        return response()->json(['data' => $message, 'read_at' => $recipient->read_at]);
+        // Letters addressed to this user: whether they need (and have given) an acknowledgement.
+        $letter = $message->generated_letter_id
+            ? \App\Models\GeneratedLetter::query()
+                ->with('template:id,requires_acknowledgement')
+                ->where('worker_id', $user->id)
+                ->find($message->generated_letter_id)
+            : null;
+
+        return response()->json([
+            'data' => $message,
+            'read_at' => $recipient->read_at,
+            'letter' => $letter ? [
+                'requires_acknowledgement' => (bool) $letter->template?->requires_acknowledgement,
+                'acknowledged_at' => $letter->acknowledged_at?->toIso8601String(),
+            ] : null,
+        ]);
     }
 
     public function send(Request $request): JsonResponse
@@ -149,27 +164,13 @@ class InboxController extends Controller
             ], 422);
         }
 
-        // Check if there's already a pending request for this session
-        $existing = \App\Models\SessionReopenRequest::query()
-            ->where('work_session_id', $session->id)
-            ->where('status', 'pending')
-            ->first();
+        [$reopen, $created] = app(\App\Services\SessionReopenService::class)
+            ->request($user, $session, $validated['reason']);
 
-        if ($existing) {
-            return response()->json([
-                'message' => 'A reopen request is already pending for this session.',
-                'data' => $existing,
-            ]);
-        }
-
-        $reopen = \App\Models\SessionReopenRequest::create([
-            'work_session_id' => $session->id,
-            'requested_by' => $user->id,
-            'reason' => $validated['reason'],
-            'status' => 'pending',
-        ]);
-
-        return response()->json(['data' => $reopen], 201);
+        return response()->json([
+            'message' => $created ? 'Reopen request submitted.' : 'A reopen request is already pending for this session.',
+            'data' => $reopen,
+        ], $created ? 201 : 200);
     }
 }
 

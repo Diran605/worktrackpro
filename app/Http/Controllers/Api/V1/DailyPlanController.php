@@ -20,7 +20,7 @@ class DailyPlanController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $query = DailyPlan::where('user_id', $request->user()->id)
-            ->with(['assignedByUser:id,name', 'projectClient:id,name'])
+            ->with(['assignedByUser:id,name', 'projectClient:id,name', 'system:id,name,slug'])
             ->orderBy('date', 'desc')
             ->orderBy('created_at', 'desc');
 
@@ -65,18 +65,20 @@ class DailyPlanController extends Controller
     public function complete(DailyPlan $plan)
     {
         $this->authorize('update', $plan);
-        
+
+        // Log the time on a running/paused timer before the plan is closed.
+        if (in_array($plan->timer_status, [\App\Enums\TimerStatus::Running, \App\Enums\TimerStatus::Paused], true)) {
+            $plan = app(\App\Services\TimerService::class)->stop($plan);
+        }
+
         $plan->update(['status' => 'done']);
 
         if ($plan->assigned_by && $plan->assigned_by !== $plan->user_id) {
             $plan->assignedByUser?->notify(new \App\Notifications\TaskCompletedNotification($plan));
-        } else if ($plan->user) {
-            $admin = \App\Models\User::where('department_id', $plan->user->department_id)
-                ->whereHas('roles', fn ($q) => $q->where('name', 'admin'))
-                ->first();
-            if ($admin) {
-                $admin->notify(new \App\Notifications\TaskCompletedNotification($plan));
-            }
+        } elseif ($plan->user) {
+            \App\Models\User::whereIn('id', $plan->user->departmentAdminIds())
+                ->get()
+                ->each(fn ($admin) => $admin->notify(new \App\Notifications\TaskCompletedNotification($plan)));
         }
 
         return new DailyPlanResource($plan->fresh());

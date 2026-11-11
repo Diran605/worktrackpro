@@ -12,9 +12,12 @@
         "laravel/framework": "^13.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
-        "spatie/laravel-permission": "^7.3"
+        "phpoffice/phpword": "^1.4",
+        "spatie/laravel-permission": "^7.3",
+        "symfony/html-sanitizer": "^8.0"
     },
     "require-dev": {
+        "barryvdh/laravel-ide-helper": "^3.8",
         "fakerphp/faker": "^1.23",
         "laravel/pail": "^1.2.5",
         "laravel/pint": "^1.27",

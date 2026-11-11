@@ -7,6 +7,8 @@ export const useSessionStore = defineStore('session', {
         loading: false,
         error: null,
         carryOvers: [],
+        // True when clock-out was blocked by unresolved tasks; clock-out is retried once they're all resolved.
+        clockOutPending: false,
     }),
 
     getters: {
@@ -54,6 +56,7 @@ export const useSessionStore = defineStore('session', {
             } catch (err) {
                 if (err.response?.status === 422 && Array.isArray(err.response?.data?.carry_overs)) {
                     this.carryOvers = err.response.data.carry_overs;
+                    this.clockOutPending = true;
                     this.error = null;
                     return false;
                 }
@@ -85,8 +88,9 @@ export const useSessionStore = defineStore('session', {
             this.loading = true;
             this.error = null;
             try {
-                await api.post(`/sessions/${this.currentSession.id}/request-reopen`, { reason });
-                return true;
+                const res = await api.post(`/sessions/${this.currentSession.id}/request-reopen`, { reason });
+                // 201 = new request; 200 = one was already waiting for this session
+                return res.data?.message || 'Your request has been submitted to the admin.';
             } catch (err) {
                 this.error = err.response?.data?.message || 'Reopen request failed.';
                 return false;

@@ -56,6 +56,13 @@
                     Recurring Tasks
                 </router-link>
 
+                <router-link v-if="canViewKnowledge" :to="{ name: 'Knowledge' }" :class="isKnowledgeRoute ? 'bg-teal-50 text-teal-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'" class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all">
+                    <svg class="w-5 h-5 mr-3 shrink-0 transition-colors" :class="isKnowledgeRoute ? 'text-teal-600' : 'text-gray-400 group-hover:text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                    Knowledge
+                </router-link>
+
                 <div v-if="isAdmin">
                     <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mt-6 mb-4 px-3">Management</div>
 
@@ -66,8 +73,12 @@
                         Team Directory
                     </router-link>
 
+                </div>
+
+                <div v-if="canAccessAdmin">
+                    <div v-if="!isAdmin" class="text-xs font-bold text-gray-400 uppercase tracking-wider mt-6 mb-4 px-3">Reviews</div>
                     <!-- Admin Command Center Link (External to SPA) -->
-                    <a href="/admin" class="text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all mt-1">
+                    <a href="/admin" @click.prevent="openAdmin" class="text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all mt-1">
                         <svg class="w-5 h-5 mr-3 shrink-0 text-gray-400 group-hover:text-indigo-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -88,7 +99,30 @@
             </div>
 
             <!-- Bottom User Profile Area -->
-            <div class="shrink-0 p-4 border-t border-gray-100 flex items-center group">
+            <div class="shrink-0 p-4 border-t border-gray-100 flex items-center group relative">
+                <!-- Notifications panel (opens above the profile bar) -->
+                <div v-if="notificationsOpen" class="absolute bottom-full left-3 mb-2 w-80 max-h-[70vh] bg-white border border-gray-200 rounded-2xl shadow-xl z-50 flex flex-col overflow-hidden">
+                    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                        <span class="text-sm font-bold text-gray-900">Notifications</span>
+                        <button v-if="unreadCount > 0" @click="markAllNotificationsRead" class="text-xs font-semibold text-teal-700 hover:underline">Mark all as read</button>
+                    </div>
+                    <div class="overflow-y-auto">
+                        <p v-if="!notifications.length" class="px-4 py-8 text-sm text-gray-500 text-center">No notifications yet.</p>
+                        <button v-for="n in notifications" :key="n.id" @click="openNotification(n)"
+                                class="w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 flex gap-3">
+                            <span class="mt-1.5 w-2 h-2 rounded-full shrink-0" :class="n.read_at ? 'bg-transparent' : 'bg-teal-500'"></span>
+                            <span class="flex-1 min-w-0">
+                                <span class="block text-sm text-gray-900" :class="n.read_at ? '' : 'font-semibold'">{{ n.data?.title || 'Notification' }}</span>
+                                <span class="block text-xs text-gray-600 mt-0.5">{{ n.data?.message }}</span>
+                                <span class="block text-[11px] text-gray-400 mt-1">{{ timeAgo(n.created_at) }}</span>
+                            </span>
+                        </button>
+                    </div>
+                    <router-link :to="{ name: 'Inbox' }" @click="notificationsOpen = false" class="px-4 py-2.5 text-xs font-semibold text-center text-gray-600 hover:bg-gray-50 border-t border-gray-100">
+                        Messages and system notices are in your Inbox →
+                    </router-link>
+                </div>
+
                 <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold border" :style="{ backgroundColor: orgPrimaryColor, borderColor: orgPrimaryColor + '40' }">
                     {{ authStore.user?.name?.charAt(0) || 'U' }}
                 </div>
@@ -98,7 +132,7 @@
                 </div>
                 
                 <!-- Notification Bell -->
-                <button class="ml-1 p-2 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors relative" title="Notifications">
+                <button @click="toggleNotifications" class="ml-1 p-2 text-gray-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors relative" :class="notificationsOpen ? 'text-amber-500 bg-amber-50' : ''" title="Notifications">
                     <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                     </svg>
@@ -124,6 +158,7 @@
                 <router-link :to="{ name: 'DailyPlans' }" class="text-gray-500 hover:text-teal-600 font-medium">Plans</router-link>
                 <router-link :to="{ name: 'ActivityLogs' }" class="text-gray-500 hover:text-teal-600 font-medium">Logs</router-link>
                 <router-link :to="{ name: 'RecurringTasks' }" class="text-gray-500 hover:text-teal-600 font-medium">Recurring</router-link>
+                <router-link v-if="canViewKnowledge" :to="{ name: 'Knowledge' }" class="text-gray-500 hover:text-teal-600 font-medium">Knowledge</router-link>
                 <router-link v-if="isAdmin" :to="{ name: 'Team' }" class="text-gray-500 hover:text-blue-600 font-medium">Team</router-link>
                 <router-link :to="{ name: 'Settings' }" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
@@ -160,6 +195,10 @@ const route = useRoute();
 const unreadCount = ref(0);
 const inboxStore = useInboxStore();
 
+const canViewKnowledge = computed(() => (authStore.user?.permissions || []).includes('view_kb'));
+const isKnowledgeRoute = computed(() => route.path.startsWith('/knowledge'));
+const canAccessAdmin = computed(() => !!authStore.user?.can_access_admin);
+
 const isAdmin = computed(() => {
     const roles = authStore.user?.roles || [];
     const perms = authStore.user?.permissions || [];
@@ -175,17 +214,68 @@ const orgColorVars = computed(() => ({
     '--org-secondary': authStore.user?.organisation?.secondary_color || '#6366f1',
 }));
 
+const notifications = ref([]);
+const notificationsOpen = ref(false);
+
 const fetchNotifications = async () => {
     if (!authStore.isAuthenticated) return;
     try {
         const response = await api.get('/notifications');
         unreadCount.value = response.data.unread_count;
+        notifications.value = response.data.data;
     } catch (e) {
         console.error('Failed to fetch notifications', e);
     }
 };
 
+const toggleNotifications = async () => {
+    notificationsOpen.value = !notificationsOpen.value;
+    if (notificationsOpen.value) await fetchNotifications();
+};
+
+const openNotification = async (n) => {
+    if (!n.read_at) {
+        await api.patch(`/notifications/${n.id}/read`).catch(() => {});
+        n.read_at = new Date().toISOString();
+        unreadCount.value = Math.max(0, unreadCount.value - 1);
+    }
+    notificationsOpen.value = false;
+    // Task notifications point at a plan
+    if (n.data?.plan_id) router.push({ name: 'DailyPlans' });
+};
+
+const markAllNotificationsRead = async () => {
+    await api.patch('/notifications/read-all').catch(() => {});
+    notifications.value.forEach(n => { n.read_at ??= new Date().toISOString(); });
+    unreadCount.value = 0;
+};
+
+const timeAgo = (iso) => {
+    const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins} min ago`;
+    const hours = Math.round(mins / 60);
+    if (hours < 24) return `${hours} h ago`;
+    return new Date(iso).toLocaleDateString();
+};
+
+// Command Center: sign into /admin as the portal user (not whoever last used /admin in this browser)
+const openAdmin = async () => {
+    try {
+        const res = await api.post('/auth/admin-link');
+        window.location.assign(res.data.url);
+    } catch (e) {
+        alert(e.response?.status === 403 ? 'Your account does not have access to the Command Center.' : 'Could not open the Command Center.');
+    }
+};
+
+// Close the notifications panel when clicking elsewhere
+const closeOnOutsideClick = (e) => {
+    if (notificationsOpen.value && !e.target.closest('aside')) notificationsOpen.value = false;
+};
+
 onMounted(() => {
+    document.addEventListener('click', closeOnOutsideClick);
     fetchNotifications();
     setInterval(fetchNotifications, 60000); // Check every minute
 

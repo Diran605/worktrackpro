@@ -17,7 +17,13 @@ class Message extends Model
         'body',
         'message_type',
         'organisation_id',
+        'generated_letter_id',
     ];
+
+    public function generatedLetter(): BelongsTo
+    {
+        return $this->belongsTo(GeneratedLetter::class);
+    }
 
     public function sender(): BelongsTo
     {

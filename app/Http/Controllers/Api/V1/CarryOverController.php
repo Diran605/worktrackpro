@@ -3,15 +3,28 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\PlanStatus;
+use App\Enums\StopReason;
+use App\Enums\TimerStatus;
 use App\Http\Controllers\Controller;
 use App\Models\DailyPlan;
+use App\Services\TimerService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class CarryOverController extends Controller
 {
+    public function __construct(private readonly TimerService $timers)
+    {
+    }
+
+    /**
+     * Pending plans from previous days that still need a decision.
+     * Plans the worker chose to "leave for now" today are not asked about again until tomorrow.
+     */
     public function getPendingCarryOvers(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -19,7 +32,8 @@ class CarryOverController extends Controller
         $plans = DailyPlan::query()
             ->where('user_id', $user->id)
             ->where('status', PlanStatus::Pending->value)
-            ->whereDate('date', '<', now()->toDateString())
+            ->whereDate('date', '<', $user->localToday())
+            ->notLeftToday($user)
             ->orderBy('date')
             ->get();
 
@@ -30,14 +44,10 @@ class CarryOverController extends Controller
     {
         $user = $request->user();
 
-        if ($plan->user_id !== $user->id) {
-            abort(403);
-        }
+        abort_if($plan->user_id !== $user->id, 403);
 
         if ($plan->status !== PlanStatus::Pending) {
-            throw ValidationException::withMessages([
-                'plan' => 'Only pending plans can be resolved.',
-            ]);
+            throw ValidationException::withMessages(['plan' => 'Only pending plans can be resolved.']);
         }
 
         $validated = $request->validate([
@@ -45,40 +55,72 @@ class CarryOverController extends Controller
             'priority' => ['nullable', Rule::in(['high', 'medium', 'low'])],
         ]);
 
-        $decision = $validated['decision'];
-
-        if ($decision === 'leave') {
-            return response()->json(['data' => $plan->fresh()]);
+        // Any time on a running or paused timer is logged before the plan changes.
+        if (in_array($plan->timer_status, [TimerStatus::Running, TimerStatus::Paused], true)) {
+            $plan = $this->timers->stop($plan, StopReason::ClockOut);
         }
 
-        if ($decision === 'cancel') {
-            $plan->update(['status' => PlanStatus::Cancelled]);
-            return response()->json(['data' => $plan->fresh()]);
-        }
+        return match ($validated['decision']) {
+            'leave' => $this->leave($plan),
+            'cancel' => $this->cancel($plan),
+            'carry_over' => $this->carryOver($plan, $validated['priority'] ?? null, $user),
+        };
+    }
 
-        // carry_over
-        $newPriority = $validated['priority'] ?? ($plan->priority?->value ?? 'medium');
-
-        $new = DailyPlan::create([
-            'user_id' => $user->id,
-            'organisation_id' => $user->organisation_id,
-            'assigned_by' => $plan->assigned_by,
-            'date' => now()->toDateString(),
-            'task_name' => $plan->task_name,
-            'project_client' => $plan->project_client,
-            'project_client_id' => $plan->project_client_id,
-            'priority' => $newPriority,
-            'expected_duration_minutes' => (int) $plan->expected_duration_minutes,
-            'notes' => $plan->notes,
-            'status' => PlanStatus::Pending,
-            'is_assigned' => (bool) $plan->is_assigned,
-            'task_template_id' => $plan->task_template_id,
-            'personal_recurring_task_id' => $plan->personal_recurring_task_id,
-            'carried_from_plan_id' => $plan->id,
-            'carry_over_count' => (int) $plan->carry_over_count + 1,
+    private function leave(DailyPlan $plan): JsonResponse
+    {
+        $plan->update([
+            'carry_over_decision' => 'leave',
+            'carry_over_decided_at' => now(),
         ]);
 
-        $plan->update(['status' => PlanStatus::CarriedOver]);
+        return response()->json(['data' => $plan->fresh()]);
+    }
+
+    private function cancel(DailyPlan $plan): JsonResponse
+    {
+        $plan->update(['status' => PlanStatus::Cancelled]);
+
+        return response()->json(['data' => $plan->fresh()]);
+    }
+
+    private function carryOver(DailyPlan $plan, ?string $priority, \App\Models\User $user): JsonResponse
+    {
+        // Older plans come forward to today; today's plans (resolved at clock-out) move to the next working day.
+        // "Today" is the organisation's date, not the server's.
+        $today = Carbon::parse($user->localToday());
+        $targetDate = $plan->date->lt($today) ? $today : self::nextWorkingDay($today);
+
+        $new = DB::transaction(function () use ($plan, $priority, $targetDate) {
+            $new = DailyPlan::create([
+                'user_id' => $plan->user_id,
+                'organisation_id' => $plan->organisation_id,
+                'assigned_by' => $plan->assigned_by,
+                'date' => $targetDate->toDateString(),
+                'task_name' => $plan->task_name,
+                'project_client' => $plan->project_client,
+                'project_client_id' => $plan->project_client_id,
+                'priority' => $priority ?? ($plan->priority?->value ?? 'medium'),
+                'work_type' => $plan->work_type ?: 'direct',
+                'work_type_id' => $plan->work_type_id,
+                'expected_duration_minutes' => (int) $plan->expected_duration_minutes,
+                'notes' => $plan->notes,
+                'status' => PlanStatus::Pending,
+                'is_assigned' => (bool) $plan->is_assigned,
+                'task_template_id' => $plan->task_template_id,
+                'personal_recurring_task_id' => $plan->personal_recurring_task_id,
+                'carried_from_plan_id' => $plan->id,
+                'carry_over_count' => (int) $plan->carry_over_count + 1,
+            ]);
+
+            $plan->update([
+                'status' => PlanStatus::CarriedOver,
+                'carry_over_decision' => 'carry_over',
+                'carry_over_decided_at' => now(),
+            ]);
+
+            return $new;
+        });
 
         return response()->json([
             'data' => [
@@ -87,5 +129,15 @@ class CarryOverController extends Controller
             ],
         ], 201);
     }
-}
 
+    public static function nextWorkingDay(Carbon $from): Carbon
+    {
+        $day = $from->copy()->addDay();
+
+        while ($day->isWeekend()) {
+            $day->addDay();
+        }
+
+        return $day;
+    }
+}

@@ -86,6 +86,24 @@
                         <pre class="whitespace-pre-wrap font-sans text-sm text-gray-700 leading-relaxed">{{ inbox.selected.body }}</pre>
                     </div>
 
+                    <!-- Letters that need acknowledging -->
+                    <div v-if="inbox.selectedLetter?.requires_acknowledgement" class="mt-6">
+                        <div v-if="inbox.selectedLetter.acknowledged_at"
+                             class="flex items-center gap-2 p-4 rounded-xl bg-green-50 border border-green-100 text-sm text-green-800">
+                            ✓ You acknowledged this letter on {{ new Date(inbox.selectedLetter.acknowledged_at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }) }}.
+                        </div>
+                        <div v-else class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200">
+                            <div class="text-sm text-amber-900">
+                                <div class="font-bold">Please acknowledge this letter</div>
+                                <div class="text-xs mt-0.5">Read the attached letter, then confirm you have received it. This does not mean you agree with it.</div>
+                            </div>
+                            <button @click="inbox.acknowledgeLetter()" :disabled="inbox.acknowledging"
+                                    class="shrink-0 px-4 py-2 rounded-xl text-sm font-bold bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50">
+                                {{ inbox.acknowledging ? 'Saving…' : 'I acknowledge receipt' }}
+                            </button>
+                        </div>
+                    </div>
+
                     <div v-if="inbox.selected.attachments?.length" class="mt-8 border-t border-gray-100 pt-6">
                         <div class="text-xs font-black uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
@@ -226,9 +244,13 @@ const sendMessage = async () => {
         // If this was a reopen request, also create the formal SessionReopenRequest record
         if (isReopenRequest.value) {
             try {
-                await api.post('/inbox/request-reopen', {
+                const res = await api.post('/inbox/request-reopen', {
                     reason: form.value.body
                 });
+                if (res.status === 200 && res.data?.message) {
+                    // A request for this session was already waiting, so no new one was created
+                    alert(res.data.message);
+                }
             } catch (e) {
                 console.warn('Reopen request record creation failed (message was still sent):', e.response?.data?.message);
             }
