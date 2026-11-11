@@ -25,6 +25,22 @@ class CompanyLetterhead extends Model
         'is_active' => 'boolean',
     ];
 
+    /**
+     * Only one letterhead per organisation is in use: activating one switches the others off.
+     */
+    protected static function booted(): void
+    {
+        static::saved(function (CompanyLetterhead $letterhead) {
+            if ($letterhead->is_active) {
+                static::query()
+                    ->where('organisation_id', $letterhead->organisation_id)
+                    ->whereKeyNot($letterhead->getKey())
+                    ->where('is_active', true)
+                    ->update(['is_active' => false]);
+            }
+        });
+    }
+
     public function organisation(): BelongsTo
     {
         return $this->belongsTo(Organisation::class);

@@ -17,6 +17,9 @@ use Illuminate\Database\Eloquent\Builder;
 
 class LetterTemplateResource extends Resource
 {
+    // canEdit()/canDelete() below are enforced on the pages too, not just used to hide buttons.
+    use \App\Filament\Concerns\EnforcesRecordAccess;
+
     protected static ?string $model = LetterTemplate::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentDuplicate;
@@ -28,6 +31,26 @@ class LetterTemplateResource extends Resource
     public static function canViewAny(): bool
     {
         return auth()->user()?->hasPermissionTo('manage_letters') ?? false;
+    }
+
+    /**
+     * System templates are shared by every organisation, so only a super admin may change them.
+     * Organisation admins use "Make a copy" to get an editable version.
+     */
+    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
+    {
+        $user = auth()->user();
+
+        if ($user?->hasRole('super_admin')) {
+            return true;
+        }
+
+        return $record->organisation_id !== null && $record->organisation_id === $user?->organisation_id;
+    }
+
+    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
+    {
+        return !$record->is_system_default && static::canEdit($record);
     }
 
     public static function form(Schema $schema): Schema

@@ -24,6 +24,7 @@ class LetterService
     public function generateAndDeliver(LetterTemplate $template, User $worker, User $generatedBy, string $subject, string $bodyHtml): GeneratedLetter
     {
         $organisationId = (int) $generatedBy->organisation_id;
+        $bodyHtml = \App\Support\SafeHtml::clean($bodyHtml) ?? '';
 
         $letterhead = CompanyLetterhead::query()
             ->where('organisation_id', $organisationId)

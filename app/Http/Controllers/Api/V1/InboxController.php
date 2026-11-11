@@ -50,7 +50,22 @@ class InboxController extends Controller
             ->with(['sender:id,name', 'attachments'])
             ->findOrFail($id);
 
-        return response()->json(['data' => $message, 'read_at' => $recipient->read_at]);
+        // Letters addressed to this user: whether they need (and have given) an acknowledgement.
+        $letter = $message->generated_letter_id
+            ? \App\Models\GeneratedLetter::query()
+                ->with('template:id,requires_acknowledgement')
+                ->where('worker_id', $user->id)
+                ->find($message->generated_letter_id)
+            : null;
+
+        return response()->json([
+            'data' => $message,
+            'read_at' => $recipient->read_at,
+            'letter' => $letter ? [
+                'requires_acknowledgement' => (bool) $letter->template?->requires_acknowledgement,
+                'acknowledged_at' => $letter->acknowledged_at?->toIso8601String(),
+            ] : null,
+        ]);
     }
 
     public function send(Request $request): JsonResponse
