@@ -19,7 +19,14 @@ class UserForm
                     ->required()
                     ->hidden(fn () => !auth()->user()->hasRole('super_admin')),
                 Select::make('department_id')
-                    ->relationship('department', 'name')
+                    ->relationship(
+                        'department',
+                        'name',
+                        // Only departments in the admin's own organisation (super admins see all).
+                        fn (\Illuminate\Database\Eloquent\Builder $query) => auth()->user()->hasRole('super_admin')
+                            ? $query
+                            : $query->where('organisation_id', auth()->user()->organisation_id)
+                    )
                     ->hidden(fn () => !auth()->user()->hasRole('super_admin') && auth()->user()->hasRole('admin')),
                 TextInput::make('name')
                     ->required(),
@@ -28,9 +35,18 @@ class UserForm
                     ->email()
                     ->required(),
                 Select::make('roles')
-                    ->relationship('roles', 'name', fn (\Illuminate\Database\Eloquent\Builder $query) => 
-                        auth()->user()->hasRole('super_admin') ? $query : $query->where('name', '!=', 'super_admin')
-                    )
+                    ->relationship('roles', 'name', function (\Illuminate\Database\Eloquent\Builder $query) {
+                        $user = auth()->user();
+
+                        if ($user->hasRole('super_admin')) {
+                            return $query;
+                        }
+
+                        // Admins may assign core roles (except super_admin) and their organisation's custom roles.
+                        return $query
+                            ->where('name', '!=', 'super_admin')
+                            ->where(fn ($q) => $q->whereNull('organisation_id')->orWhere('organisation_id', $user->organisation_id));
+                    })
                     ->multiple()
                     ->preload(),
                 TextInput::make('password')

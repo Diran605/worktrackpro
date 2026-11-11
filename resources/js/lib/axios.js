@@ -8,7 +8,7 @@ const api = axios.create({
     }
 });
 
-// Interceptor to inject the Sanctum bearer token into every request automatically
+// Inject the Sanctum bearer token into every request
 api.interceptors.request.use(config => {
     const token = localStorage.getItem('access_token');
     if (token) {
@@ -16,5 +16,20 @@ api.interceptors.request.use(config => {
     }
     return config;
 });
+
+// Expired or revoked token: clear it and send the user to the login page
+api.interceptors.response.use(
+    response => response,
+    error => {
+        const isAuthCall = error.config?.url?.startsWith('/auth/login');
+        if (error.response?.status === 401 && !isAuthCall) {
+            localStorage.removeItem('access_token');
+            if (window.location.pathname !== '/login') {
+                window.location.assign('/login');
+            }
+        }
+        return Promise.reject(error);
+    }
+);
 
 export default api;

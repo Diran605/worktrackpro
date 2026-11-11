@@ -58,6 +58,16 @@ class DailyPlanForm
                     ->searchable()
                     ->placeholder('Select a project/client'),
 
+                Select::make('system_id')
+                    ->label('Related system (optional)')
+                    ->helperText('For documentation or study tasks: the worker gets a link to this system\'s manual.')
+                    ->options(fn () => \App\Models\System::query()
+                        ->where('organisation_id', $user->organisation_id)
+                        ->where('status', '!=', 'retired')
+                        ->orderBy('name')
+                        ->pluck('name', 'id'))
+                    ->searchable(),
+
                 TextInput::make('project_client')
                     ->label('Additional Details')
                     ->placeholder('Extra context about this project/client task')
@@ -70,6 +80,12 @@ class DailyPlanForm
                         'low' => '🟢 Low',
                     ])
                     ->default('medium')
+                    ->required(),
+
+                Select::make('work_type')
+                    ->label('Work Type')
+                    ->options(collect(\App\Enums\WorkType::cases())->mapWithKeys(fn ($c) => [$c->value => $c->label()]))
+                    ->default('direct')
                     ->required(),
 
                 TextInput::make('expected_duration_minutes')

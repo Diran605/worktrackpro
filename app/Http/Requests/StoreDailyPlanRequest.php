@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Enums\Priority;
 use App\Enums\PlanStatus;
+use App\Enums\WorkType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Enum;
 
@@ -21,6 +22,8 @@ class StoreDailyPlanRequest extends FormRequest
             'task_name' => ['required', 'string', 'max:255'],
             'project_client' => ['nullable', 'string', 'max:255'],
             'priority' => ['required', new Enum(Priority::class)],
+            'work_type' => ['sometimes', 'required', new Enum(WorkType::class)],
+            'project_client_id' => ['nullable', 'integer', 'exists:project_clients,id'],
             'expected_duration_minutes' => ['required', 'integer', 'min:1'],
             'notes' => ['nullable', 'string'],
             'status' => ['required', new Enum(PlanStatus::class)],

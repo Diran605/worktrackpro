@@ -54,10 +54,22 @@ export const useAuthStore = defineStore('auth', {
         
         async logout() {
             if (this.token) {
+                // Also end the /admin session in this browser, so the next person doesn't inherit it.
+                let adminLogoutUrl = null;
+                try {
+                    adminLogoutUrl = (await api.post('/auth/admin-logout-link')).data.url;
+                } catch (e) {
+                    // Not critical
+                }
+
                 try {
                     await api.post('/auth/logout');
                 } catch (e) {
                     // Ignore errors on logout, we clear local state anyway
+                }
+
+                if (adminLogoutUrl) {
+                    await fetch(adminLogoutUrl, { credentials: 'same-origin' }).catch(() => {});
                 }
             }
             

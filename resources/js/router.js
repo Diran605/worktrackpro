@@ -45,6 +45,44 @@ const routes = [
         component: () => import('./views/inbox/InboxView.vue'),
         meta: { requiresAuth: true }
     },
+    // Knowledge base
+    {
+        path: '/knowledge',
+        name: 'Knowledge',
+        component: () => import('./views/knowledge/SystemsView.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/knowledge/contributions',
+        name: 'MyContributions',
+        component: () => import('./views/knowledge/MyContributionsView.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/knowledge/:slug',
+        name: 'SystemDetail',
+        component: () => import('./views/knowledge/SystemDetailView.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/knowledge/:slug/read/:sectionId',
+        name: 'ManualReader',
+        component: () => import('./views/knowledge/ManualReaderView.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
+        // ?section=<id> edits a section, ?change=<id> continues a draft, neither starts a new section
+        path: '/knowledge/:slug/write',
+        name: 'ManualEditor',
+        component: () => import('./views/knowledge/ManualEditorView.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/knowledge/:slug/upload',
+        name: 'ManualUpload',
+        component: () => import('./views/knowledge/ManualUploadView.vue'),
+        meta: { requiresAuth: true }
+    },
     {
         path: '/recurring-tasks',
         name: 'RecurringTasks',

@@ -19,6 +19,12 @@ protected static string $resource = RoleResource::class;
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['guard_name'] = 'web';
+
+        // Roles made by organisation admins belong to their organisation only.
+        if (!auth()->user()->hasRole('super_admin')) {
+            $data['organisation_id'] = auth()->user()->organisation_id;
+        }
+
         return $data;
     }
 }

@@ -14,6 +14,13 @@ class DailyPlanResource extends JsonResource
             'date' => $this->date->format('Y-m-d'),
             'task_name' => $this->task_name,
             'project_client' => $this->project_client,
+            'project_client_id' => $this->project_client_id,
+            'work_type' => $this->work_type ?: 'direct',
+            'is_assigned' => (bool) $this->is_assigned,
+            'system' => $this->system_id && $this->system
+                ? ['id' => $this->system->id, 'name' => $this->system->name, 'slug' => $this->system->slug]
+                : null,
+            'manual_change_request_id' => $this->manual_change_request_id,
             'timer' => [
                 'status' => $this->timer_status?->value ?? $this->timer_status,
                 'started_at' => $this->timer_started_at?->toIso8601String(),

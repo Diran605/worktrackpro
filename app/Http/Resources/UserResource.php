@@ -39,6 +39,11 @@ class UserResource extends JsonResource
             'permissions' => $this->whenLoaded('permissions', function() {
                 return $this->getAllPermissions()->pluck('name');
             }),
+            // Only for the signed-in user (login / me): whether to show the Command Center link.
+            'can_access_admin' => $this->when(
+                $request->user()?->id === $this->id || $request->routeIs('api.auth.login'),
+                fn () => $this->resource->canAccessPanel(\Filament\Facades\Filament::getPanel('admin'))
+            ),
         ];
     }
 }

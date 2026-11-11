@@ -149,27 +149,13 @@ class InboxController extends Controller
             ], 422);
         }
 
-        // Check if there's already a pending request for this session
-        $existing = \App\Models\SessionReopenRequest::query()
-            ->where('work_session_id', $session->id)
-            ->where('status', 'pending')
-            ->first();
+        [$reopen, $created] = app(\App\Services\SessionReopenService::class)
+            ->request($user, $session, $validated['reason']);
 
-        if ($existing) {
-            return response()->json([
-                'message' => 'A reopen request is already pending for this session.',
-                'data' => $existing,
-            ]);
-        }
-
-        $reopen = \App\Models\SessionReopenRequest::create([
-            'work_session_id' => $session->id,
-            'requested_by' => $user->id,
-            'reason' => $validated['reason'],
-            'status' => 'pending',
-        ]);
-
-        return response()->json(['data' => $reopen], 201);
+        return response()->json([
+            'message' => $created ? 'Reopen request submitted.' : 'A reopen request is already pending for this session.',
+            'data' => $reopen,
+        ], $created ? 201 : 200);
     }
 }
 

@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\DailyPlan;
 use App\Models\User;
+use App\Support\Permissions;
 
 class DailyPlanPolicy
 {
@@ -44,7 +45,7 @@ class DailyPlanPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('assign_plans') || $user->hasPermissionTo('manage_own_work');
+        return $user->can(Permissions::ASSIGN_PLANS) || $user->can(Permissions::MANAGE_OWN_WORK);
     }
 
     /**

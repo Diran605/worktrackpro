@@ -2,17 +2,26 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\PlanStatus;
 use App\Enums\SessionStatus;
+use App\Enums\StopReason;
 use App\Http\Controllers\Controller;
 use App\Models\DailyPlan;
-use App\Models\SessionReopenRequest;
 use App\Models\WorkSession;
+use App\Services\SessionReopenService;
+use App\Services\TimerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 class WorkSessionController extends Controller
 {
+    public function __construct(
+        private readonly TimerService $timers,
+        private readonly SessionReopenService $reopens,
+    ) {
+    }
+
     public function clockIn(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -63,10 +72,12 @@ class WorkSessionController extends Controller
             ]);
         }
 
+        // Plans already "left for now" today don't block clock-out.
         $incompletePlans = DailyPlan::query()
             ->where('user_id', $user->id)
             ->whereDate('date', $today)
-            ->whereIn('status', ['pending'])
+            ->where('status', PlanStatus::Pending->value)
+            ->notLeftToday()
             ->orderBy('created_at')
             ->get();
 
@@ -77,13 +88,15 @@ class WorkSessionController extends Controller
             ], 422);
         }
 
+        // Log any time still on a running or paused timer before the session closes.
+        $this->timers->stopAllForUser($user->id, StopReason::ClockOut);
+
         $clockOutAt = now();
-        $totalMinutes = $session->clock_in?->diffInMinutes($clockOutAt) ?? null;
 
         $session->update([
             'clock_out' => $clockOutAt,
             'clock_out_ip' => $request->ip(),
-            'total_minutes' => $totalMinutes,
+            'total_minutes' => (int) $session->clock_in->diffInMinutes($clockOutAt),
             'status' => SessionStatus::Closed,
         ]);
 
@@ -92,12 +105,9 @@ class WorkSessionController extends Controller
 
     public function currentSession(Request $request): JsonResponse
     {
-        $user = $request->user();
-        $today = now()->toDateString();
-
         $session = WorkSession::query()
-            ->where('user_id', $user->id)
-            ->whereDate('date', $today)
+            ->where('user_id', $request->user()->id)
+            ->whereDate('date', now()->toDateString())
             ->first();
 
         return response()->json(['data' => $session]);
@@ -105,48 +115,15 @@ class WorkSessionController extends Controller
 
     public function requestReopen(Request $request, WorkSession $session): JsonResponse
     {
-        $user = $request->user();
-
-        if ($session->user_id !== $user->id) {
-            abort(403);
-        }
-
-        if ($session->status === SessionStatus::Active) {
-            throw ValidationException::withMessages([
-                'session' => 'Active sessions do not need to be reopened.',
-            ]);
-        }
-
         $validated = $request->validate([
             'reason' => ['required', 'string', 'min:5'],
         ]);
 
-        $reopen = SessionReopenRequest::create([
-            'work_session_id' => $session->id,
-            'requested_by' => $user->id,
-            'reason' => $validated['reason'],
-            'status' => 'pending',
-        ]);
+        [$reopen, $created] = $this->reopens->request($request->user(), $session, $validated['reason']);
 
-        // Notify admins
-        $admins = \App\Models\User::query()
-            ->where('organisation_id', $user->organisation_id)
-            ->whereHas('roles', fn ($q) => $q->whereIn('name', ['admin', 'super_admin']))
-            ->pluck('id')
-            ->toArray();
-
-        if (!empty($admins)) {
-            app(\App\Services\InboxService::class)->sendMessage(
-                organisationId: (int) $user->organisation_id,
-                senderId: (int) $user->id,
-                recipientIds: $admins,
-                subject: 'Session Reopen Request',
-                body: "Worker {$user->name} has requested to reopen their session for {$session->date->format('Y-m-d')}.\n\nReason: {$validated['reason']}",
-                messageType: 'system'
-            );
-        }
-
-        return response()->json(['data' => $reopen], 201);
+        return response()->json([
+            'message' => $created ? 'Reopen request submitted.' : 'A reopen request is already pending for this session.',
+            'data' => $reopen,
+        ], $created ? 201 : 200);
     }
 }
-

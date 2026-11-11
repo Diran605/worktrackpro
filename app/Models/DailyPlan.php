@@ -37,16 +37,34 @@ class DailyPlan extends Model
         'personal_recurring_task_id',
         'carried_from_plan_id',
         'carry_over_count',
+        'carry_over_decision',
+        'carry_over_decided_at',
+        'work_type',
+        'system_id',
+        'manual_change_request_id',
     ];
 
     protected $casts = [
         'date' => 'date',
+        'carry_over_decided_at' => 'datetime',
         'priority' => Priority::class,
         'status' => PlanStatus::class,
         'timer_status' => TimerStatus::class,
         'timer_started_at' => 'datetime',
         'is_assigned' => 'boolean',
     ];
+
+    /**
+     * Excludes plans the worker chose to "leave for now" today, so they don't block clock-out again.
+     */
+    public function scopeNotLeftToday($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('carry_over_decided_at')
+                ->orWhere('carry_over_decision', '!=', 'leave')
+                ->orWhereDate('carry_over_decided_at', '<', today());
+        });
+    }
 
     public function user(): BelongsTo
     {
@@ -81,6 +99,16 @@ class DailyPlan extends Model
     public function assignedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_by');
+    }
+
+    public function system(): BelongsTo
+    {
+        return $this->belongsTo(System::class);
+    }
+
+    public function manualChangeRequest(): BelongsTo
+    {
+        return $this->belongsTo(ManualChangeRequest::class);
     }
 
     public function projectClient(): BelongsTo

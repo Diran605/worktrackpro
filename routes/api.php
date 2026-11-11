@@ -13,17 +13,25 @@ use App\Http\Controllers\Api\V1\PersonalRecurringTaskController;
 use App\Http\Controllers\Api\V1\CarryOverController;
 use App\Http\Controllers\Api\V1\InboxController;
 use App\Http\Controllers\Api\V1\InboxAcknowledgeController;
+use App\Http\Controllers\Api\V1\ManualChangeController;
+use App\Http\Controllers\Api\V1\ManualController;
+use App\Http\Controllers\Api\V1\SystemController;
 
 Route::prefix('v1')->group(function () {
     Route::prefix('auth')->group(function () {
-        Route::post('login', [AuthController::class, 'login']);
-        Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
-        Route::post('reset-password', [AuthController::class, 'resetPassword']);
+        // Throttled to slow down password guessing (5 attempts per minute per IP).
+        Route::middleware('throttle:5,1')->group(function () {
+            Route::post('login', [AuthController::class, 'login'])->name('api.auth.login');
+            Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
+            Route::post('reset-password', [AuthController::class, 'resetPassword']);
+        });
 
         Route::middleware('auth:sanctum')->group(function () {
             Route::post('logout', [AuthController::class, 'logout']);
             Route::get('me', [AuthController::class, 'me']);
             Route::patch('password', [AuthController::class, 'updatePassword']);
+            Route::post('admin-link', [\App\Http\Controllers\AdminHandoffController::class, 'link']);
+            Route::post('admin-logout-link', [\App\Http\Controllers\AdminHandoffController::class, 'logoutLink']);
         });
     });
 
@@ -78,7 +86,33 @@ Route::prefix('v1')->group(function () {
 
         Route::prefix('notifications')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\V1\NotificationController::class, 'index']);
+            Route::patch('/read-all', [\App\Http\Controllers\Api\V1\NotificationController::class, 'markAllAsRead']);
             Route::patch('/{id}/read', [\App\Http\Controllers\Api\V1\NotificationController::class, 'markAsRead']);
+        });
+
+        // Knowledge base: system registry and manuals
+        Route::get('systems', [SystemController::class, 'index'])->name('api.systems.index');
+        Route::get('systems/{slug}', [SystemController::class, 'show'])->name('api.systems.show');
+
+        Route::prefix('systems/{slug}/manual')->group(function () {
+            Route::get('/', [ManualController::class, 'show']);
+            Route::get('search', [ManualController::class, 'search']);
+            Route::get('sections/{section}', [ManualController::class, 'section'])->whereNumber('section');
+            Route::post('sections/{section}/read', [ManualController::class, 'markRead'])->whereNumber('section');
+            Route::post('assets', [ManualController::class, 'uploadAsset']);
+            Route::post('track-study', [ManualController::class, 'trackStudy']);
+            Route::post('changes', [ManualChangeController::class, 'store'])->name('api.manual-changes.store');
+            Route::post('import-docx', [ManualChangeController::class, 'importDocx']);
+        });
+
+        Route::prefix('manual-changes')->group(function () {
+            Route::get('/', [ManualChangeController::class, 'index']);
+            Route::get('{change}', [ManualChangeController::class, 'show'])->name('api.manual-changes.show');
+            Route::patch('{change}', [ManualChangeController::class, 'update'])->name('api.manual-changes.update');
+            Route::delete('{change}', [ManualChangeController::class, 'destroy']);
+            Route::post('{change}/pdf', [ManualChangeController::class, 'uploadPdf'])->name('api.manual-changes.pdf');
+            Route::post('{change}/submit', [ManualChangeController::class, 'submit']);
+            Route::post('{change}/track-time', [ManualChangeController::class, 'trackTime']);
         });
 
         // Team directory

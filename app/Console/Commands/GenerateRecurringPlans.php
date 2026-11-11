@@ -50,6 +50,7 @@ class GenerateRecurringPlans extends Command
                     'date' => $date,
                     'task_name' => $template->title,
                     'priority' => 'medium',
+                    'work_type' => $template->work_type ?: 'direct',
                     'expected_duration_minutes' => (int) $template->expected_duration_minutes,
                     'status' => 'pending',
                     'is_assigned' => true,
@@ -57,6 +58,11 @@ class GenerateRecurringPlans extends Command
                 ]);
 
                 $generated++;
+            }
+
+            // One-time templates run once, then switch off (previously they generated a plan every day).
+            if ($template->recurrence_type === 'one_time') {
+                $template->update(['is_active' => false]);
             }
         }
 
@@ -90,6 +96,7 @@ class GenerateRecurringPlans extends Command
                 'date' => $date,
                 'task_name' => $task->title,
                 'priority' => $task->priority,
+                'work_type' => $task->work_type ?: 'direct',
                 'expected_duration_minutes' => (int) $task->expected_duration_minutes,
                 'status' => 'pending',
                 'is_assigned' => false,

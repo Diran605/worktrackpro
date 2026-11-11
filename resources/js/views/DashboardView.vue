@@ -3,7 +3,7 @@
         <CarryOverModal
             v-if="sessionStore.carryOvers?.length"
             :plans="sessionStore.carryOvers"
-            @close="sessionStore.carryOvers = []"
+            @close="sessionStore.carryOvers = []; sessionStore.clockOutPending = false"
             @resolve="handleResolveCarryOver"
         />
 
@@ -251,9 +251,11 @@ const handleRequestReopen = async () => {
         return;
     }
 
-    const success = await sessionStore.requestReopen(reason);
-    if (success) {
-        alert('Your request has been submitted to the admin.');
+    const result = await sessionStore.requestReopen(reason);
+    if (result) {
+        alert(result);
+    } else if (sessionStore.error) {
+        alert(sessionStore.error);
     }
 };
 
@@ -261,6 +263,12 @@ const handleResolveCarryOver = async ({ plan, decision, priority }) => {
     try {
         await sessionStore.resolveCarryOver(plan.id, decision, decision === 'carry_over' ? priority : null);
         sessionStore.carryOvers = sessionStore.carryOvers.filter(p => p.id !== plan.id);
+
+        // Every task resolved during clock-out: finish clocking out.
+        if (sessionStore.carryOvers.length === 0 && sessionStore.clockOutPending) {
+            sessionStore.clockOutPending = false;
+            await sessionStore.clockOut();
+        }
     } catch (e) {
         // keep modal open; error surfaces in console for now
         console.error('Failed to resolve carry over', e);

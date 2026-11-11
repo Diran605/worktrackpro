@@ -22,4 +22,11 @@ class NotificationController extends Controller
         $notification->markAsRead();
         return response()->json(['success' => true]);
     }
+
+    public function markAllAsRead(Request $request)
+    {
+        $request->user()->unreadNotifications->markAsRead();
+
+        return response()->json(['success' => true]);
+    }
 }

@@ -17,10 +17,15 @@ class ReportController extends Controller
 
     public function workerPdf(Request $request, User $user)
     {
-        // Must be authorized. We'll simplify and check if they belong to same org.
-        if ($request->user()->organisation_id !== $user->organisation_id) {
-            abort(403);
-        }
+        $viewer = $request->user();
+
+        // Own report, or an export-permitted admin looking at someone they manage.
+        $allowed = $viewer->id === $user->id
+            || ($viewer->organisation_id === $user->organisation_id
+                && $viewer->can(\App\Support\Permissions::EXPORT_REPORTS)
+                && ($viewer->hasRole('super_admin') || $viewer->department_id === $user->department_id));
+
+        abort_unless($allowed, 403);
 
         [$start, $end] = $this->parsePeriodDates($request);
 
@@ -44,7 +49,9 @@ class ReportController extends Controller
     public function teamPdf(Request $request)
     {
         $admin = $request->user();
-        
+
+        abort_unless($admin->can(\App\Support\Permissions::EXPORT_REPORTS), 403);
+
         [$start, $end] = $this->parsePeriodDates($request);
 
         $report = $this->statsService->getWorkerProductivityReport(

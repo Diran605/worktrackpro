@@ -226,9 +226,13 @@ const sendMessage = async () => {
         // If this was a reopen request, also create the formal SessionReopenRequest record
         if (isReopenRequest.value) {
             try {
-                await api.post('/inbox/request-reopen', {
+                const res = await api.post('/inbox/request-reopen', {
                     reason: form.value.body
                 });
+                if (res.status === 200 && res.data?.message) {
+                    // A request for this session was already waiting, so no new one was created
+                    alert(res.data.message);
+                }
             } catch (e) {
                 console.warn('Reopen request record creation failed (message was still sent):', e.response?.data?.message);
             }

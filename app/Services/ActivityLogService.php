@@ -66,6 +66,18 @@ class ActivityLogService
      */
     public function updateLog(ActivityLog $log, array $data): ActivityLog
     {
+        // A log may only be linked to one of its owner's own plans (otherwise syncing the
+        // completion status would change someone else's plan).
+        if (!empty($data['daily_plan_id'])) {
+            $ownsPlan = DailyPlan::where('id', $data['daily_plan_id'])
+                ->where('user_id', $log->user_id)
+                ->exists();
+
+            if (!$ownsPlan) {
+                throw ValidationException::withMessages(['daily_plan_id' => 'The selected daily plan is invalid or does not belong to you.']);
+            }
+        }
+
         // Handle changes in `is_planned`
         if (isset($data['is_planned'])) {
              if ($data['is_planned'] === true && empty($data['daily_plan_id']) && empty($log->daily_plan_id)) {

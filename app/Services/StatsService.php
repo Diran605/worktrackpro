@@ -34,15 +34,12 @@ class StatsService
             ->whereBetween('date', [$startDate, $endDate])
             ->count();
 
-        $completedPlannedCount = DB::table('activity_logs')
-            ->where('user_id', $user->id)
-            ->whereNull('deleted_at')
+        // Count plans marked done. Plans can be completed with the "complete" button (no log)
+        // or through a "complete" activity log (which marks the plan done), so the plan status covers both.
+        $completedPlannedCount = DailyPlan::where('user_id', $user->id)
             ->whereBetween('date', [$startDate, $endDate])
-            ->where('is_planned', true)
-            ->where('completion_type', 'complete')
-            ->whereNotNull('daily_plan_id')
-            ->distinct('daily_plan_id')
-            ->count('daily_plan_id');
+            ->where('status', 'done')
+            ->count();
 
         return [
             'total_minutes' => array_sum($timeByWorkType),
@@ -142,7 +139,7 @@ class StatsService
         $report = [];
 
         foreach ($users as $user) {
-            $stats = $this->getPersonalWeeklyStats($user, $start);
+            $stats = $this->getPersonalWeeklyStats($user, $start, $end);
             $report[] = [
                 'user' => $user->name,
                 'department' => $user->department?->name ?? 'None',

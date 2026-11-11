@@ -3,22 +3,26 @@
 namespace App\Console\Commands;
 
 use App\Enums\SessionStatus;
-use App\Models\WorkSession;
+use App\Enums\StopReason;
+use App\Models\ActivityLog;
 use App\Models\User;
+use App\Models\WorkSession;
 use App\Services\InboxService;
+use App\Services\OrganisationSettingsService;
+use App\Services\TimerService;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 
 class CloseAbandonedSessions extends Command
 {
-    protected $signature = 'worktrack:sessions:close-abandoned {--date=}';
+    protected $signature = 'worktrack:sessions:close-abandoned {--date=} {--force : Ignore each organisation\'s close time}';
 
-    protected $description = 'Auto-close active sessions without clock-out';
+    protected $description = 'Auto-close active sessions without clock-out (uses each organisation\'s close time)';
 
-    public function handle(): int
+    public function handle(TimerService $timers, OrganisationSettingsService $settings): int
     {
         $date = $this->option('date') ?: now()->toDateString();
 
-        // Close sessions for the given date AND any older stale active sessions
         $sessions = WorkSession::query()
             ->whereDate('date', '<=', $date)
             ->where('status', SessionStatus::Active->value)
@@ -28,9 +32,18 @@ class CloseAbandonedSessions extends Command
         $closed = 0;
 
         foreach ($sessions as $session) {
+            if (!$this->isDueForClosing($session, $settings)) {
+                continue;
+            }
+
+            $timers->stopAllForUser($session->user_id, StopReason::SystemTimeout, verified: false);
+
+            // Close at the last recorded activity instead of "now", so forgotten sessions don't inflate hours.
+            $closeAt = $this->lastActivityAt($session);
+
             $session->update([
-                'clock_out' => now(),
-                'total_minutes' => $session->clock_in ? $session->clock_in->diffInMinutes(now()) : null,
+                'clock_out' => $closeAt,
+                'total_minutes' => (int) $session->clock_in->diffInMinutes($closeAt),
                 'status' => SessionStatus::SystemClosed,
             ]);
 
@@ -43,34 +56,44 @@ class CloseAbandonedSessions extends Command
         return Command::SUCCESS;
     }
 
+    private function isDueForClosing(WorkSession $session, OrganisationSettingsService $settings): bool
+    {
+        if ($this->option('force') || $session->date->lt(today())) {
+            return true;
+        }
+
+        $closeTime = $settings->forOrganisation((int) $session->organisation_id)->abandoned_session_close_time ?: '20:00';
+
+        return now()->gte(Carbon::parse($session->date->toDateString() . ' ' . $closeTime));
+    }
+
+    private function lastActivityAt(WorkSession $session): Carbon
+    {
+        $lastLog = ActivityLog::query()
+            ->where('user_id', $session->user_id)
+            ->whereDate('date', $session->date)
+            ->max('created_at');
+
+        $candidate = $lastLog ? Carbon::parse($lastLog) : $session->clock_in->copy();
+
+        return $candidate->max($session->clock_in)->min(now());
+    }
+
     private function notifyAutoClosed(WorkSession $session): void
     {
         $worker = User::find($session->user_id);
-        if (!$worker) return;
-
-        $admin = User::query()
-            ->where('organisation_id', $worker->organisation_id)
-            ->when($worker->department_id, fn ($q) => $q->where('department_id', $worker->department_id))
-            ->whereHas('roles', fn ($q) => $q->where('name', 'admin'))
-            ->first();
-
-        $subject = 'Session auto-closed';
-        $body = "Your work session for {$session->date->format('Y-m-d')} was automatically closed. If you need to continue, request a reopen from your admin.";
-
-        $recipientIds = [$worker->id];
-        if ($admin) {
-            $recipientIds[] = $admin->id;
+        if (!$worker) {
+            return;
         }
 
         app(InboxService::class)->sendMessage(
             organisationId: (int) $worker->organisation_id,
             senderId: null,
-            recipientIds: $recipientIds,
-            subject: $subject,
-            body: $body,
+            recipientIds: array_merge([$worker->id], $worker->departmentAdminIds()),
+            subject: 'Session auto-closed',
+            body: "The work session for {$worker->name} on {$session->date->format('Y-m-d')} was automatically closed "
+                . "at {$session->clock_out->format('H:i')} (last recorded activity). If you need to continue, request a reopen from your admin.",
             messageType: 'system',
-            attachments: []
         );
     }
 }
-
