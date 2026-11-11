@@ -12,6 +12,7 @@ Route::middleware(['auth'])->group(function () {
 Route::middleware('signed')->group(function () {
     Route::get('/admin-handoff', [\App\Http\Controllers\AdminHandoffController::class, 'enter'])->name('admin.handoff');
     Route::get('/admin-session/end', [\App\Http\Controllers\AdminHandoffController::class, 'end'])->name('admin.session-end');
+    Route::get('/inbox/attachments/{attachment}', [\App\Http\Controllers\InboxAttachmentController::class, 'download'])->name('inbox.attachment');
 });
 
 // Knowledge-base files. Links are signed and short-lived; the API only hands them to permitted users.
