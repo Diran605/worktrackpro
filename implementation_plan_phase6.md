@@ -6,7 +6,7 @@ This plan covers the implementation of all 8 major features from the Feature Add
 
 | Layer | What exists today |
 |-------|------------------|
-| **Backend** | Laravel 13 + Filament v3 admin panel, Sanctum API auth |
+| **Backend** | Laravel 13 + Filament v5 admin panel, Sanctum API auth |
 | **Frontend** | Vue 3 + Pinia SPA (worker portal) at `/` |
 | **Models** | User, Organisation, Department, DailyPlan, ActivityLog, WorkType, ProjectClient, AuditLog, WeeklyStatsCache |
 | **Enums** | PlanStatus (`pending`, `done`, `carried_over`, `cancelled`), Priority, WorkType, CompletionType |

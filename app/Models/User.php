@@ -71,11 +71,6 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(ActivityLog::class);
     }
 
-    public function weeklyStats(): HasMany
-    {
-        return $this->hasMany(WeeklyStatsCache::class);
-    }
-
     /**
      * The user's organisation timezone (falls back to the app timezone).
      */
