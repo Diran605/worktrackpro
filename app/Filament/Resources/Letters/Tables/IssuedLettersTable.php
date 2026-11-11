@@ -2,8 +2,6 @@
 
 namespace App\Filament\Resources\Letters\Tables;
 
-use App\Models\MessageAttachment;
-use App\Services\InboxService;
 use Filament\Actions\Action;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -43,26 +41,13 @@ class IssuedLettersTable
                     ->icon('heroicon-o-paper-airplane')
                     ->requiresConfirmation()
                     ->action(function ($record) {
-                        $worker = $record->worker;
-                        if (!$worker) return;
+                        if (!$record->worker) return;
 
-                        $message = app(InboxService::class)->sendMessage(
-                            organisationId: (int) $record->organisation_id,
-                            senderId: null,
-                            recipientIds: [(int) $record->worker_id],
-                            subject: $record->subject,
-                            body: 'This letter has been resent to you. Please see the attached PDF.',
-                            messageType: 'letter',
-                            attachments: []
+                        // Same delivery as the first send, linked to this letter so it can be acknowledged.
+                        app(\App\Services\LetterService::class)->deliver(
+                            $record,
+                            'This letter has been resent to you. Please see the attached PDF.'
                         );
-
-                        MessageAttachment::create([
-                            'message_id' => $message->id,
-                            'file_path' => $record->pdf_path,
-                            'file_name' => basename($record->pdf_path),
-                            'file_type' => 'application/pdf',
-                            'file_size' => 0,
-                        ]);
                     }),
             ]);
     }
