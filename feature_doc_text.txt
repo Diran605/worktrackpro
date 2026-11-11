@@ -1,0 +1,782 @@
+WorkTrack Pro
+Feature Addendum — Session Discussion
+Version 3.0  ·  April 2026  ·  Draft
+This document captures all new features, decisions, and database schema additions discussed in today's planning session. It complements the original PRD and should be read alongside it.
+1. Clock-In / Clock-Out (Attendance)
+The system needs to verify that a worker was actually present before accepting any plans or activity logs. This is solved with a clock-in/clock-out mechanism that acts as the container for a worker's entire day.
+1.1 How it works
+When a worker logs in, their dashboard is visible but daily plans and timers are locked until they clock in.
+Clicking Clock In creates a work session for that day and unlocks the full portal.
+Clicking Clock Out stops all running timers, triggers the plan carry-over prompt, seals the day, and locks the portal again.
+One session per day per worker — enforced at both database and API level.
+1.2 What clock-in captures
+Exact timestamp of clock-in.
+IP address and browser/device info — so admins can spot unusual login locations.
+A unique work session ID that all plans and logs for that day are linked to.
+1.3 Clock-Out behaviour
+System checks for any running or paused timers — shows confirmation prompt to stop and save them.
+After timers are resolved, system checks for any incomplete plans and shows the carry-over prompt (see Section 8).
+After both are resolved, clock-out completes and total minutes for the day are stored on the session.
+1.4 Abandoned Sessions (Forgot to Clock Out)
+A scheduled Laravel job runs at a configurable time (e.g. 8pm or X hours after standard closing time).
+It finds all sessions still marked active with no clock-out.
+It closes them automatically, sets status to system_closed, and stops any running timers.
+Incomplete plans are also flagged — the worker sees the carry-over prompt the next time they log in.
+Worker receives an inbox notification informing them their session was auto-closed.
+Admin is also notified and can see all flagged sessions in the Attendance module.
+1.5 Worker Session Reopen Request
+When a worker's session gets auto-closed and they need to continue working, they send a formal request through the inbox rather than reopening it themselves.
+Worker sees a notice on their dashboard: "Your session for today was automatically closed. If you need to continue, request a reopen from your admin."
+They click Request Reopen — a reason is mandatory before submitting.
+Submitting creates a reopen request record and automatically sends a message to the admin's inbox with Approve and Decline buttons inline.
+If Approved: session flips back to active, worker gets an inbox notification, portal unlocks, approval written to audit log.
+If Declined: worker gets an inbox notification with the admin's optional decline reason. Session stays closed.
+Admin can also reopen a session directly from the Attendance module without waiting for a worker request — for cases where the admin notices the issue proactively.
+1.6 Admin Reopen Rules
+Role
+Can Reopen Directly
+Can Approve Reopen Request
+Scope
+Worker
+No
+No
+—
+Admin
+Yes
+Yes
+Own department only
+Super Admin
+Yes
+Yes
+Any worker
+If a session is more than 7 days old, admin sees a warning that reopening may affect weekly stats already calculated and cached.
+1.7 Attendance Module in the Admin Panel
+Attendance records are visible in a dedicated Attendance module inside the Filament Admin Panel.
+What the Attendance module shows:
+A table of all workers with clock-in time, clock-out time, total hours, and session status for any selected day or date range.
+Status indicators — green for normal closed sessions, amber for system_closed (auto-closed), red for days with no session at all (absent).
+Carried-over plan count per worker per day — so admin can see at a glance if someone has a growing backlog.
+Ability to drill into a worker's session to see all their plans, logs, and any carry-overs for that day.
+Reopen Session action accessible directly from this view.
+Pending reopen requests appear at the top as a priority list requiring action.
+Export attendance records to PDF on company letterhead.
+Access scope:
+Admin sees their department only.
+Super Admin sees all departments and all workers.
+1.8 work_sessions — Database Table
+Column
+Type
+Notes
+id
+bigint unsigned
+Primary key
+user_id
+bigint unsigned
+FK → users.id
+date
+date
+The working day — unique with user_id
+clock_in
+timestamp
+When the worker clocked in
+clock_out
+timestamp nullable
+When the worker clocked out
+total_minutes
+int nullable
+Calculated at clock-out
+status
+enum
+'active', 'closed', 'system_closed'
+clock_in_ip
+varchar(45)
+IPv4 or IPv6
+clock_out_ip
+varchar(45) nullable
+Captured at clock-out
+user_agent
+text
+Browser and device info
+notes
+text nullable
+Optional end-of-day note from worker
+created_at
+timestamp
+Standard Laravel
+updated_at
+timestamp
+Standard Laravel
+Unique constraint on (user_id, date) — one session per worker per day, enforced at DB and API level.
+1.9 session_reopen_requests — Database Table
+Column
+Type
+Notes
+id
+bigint unsigned
+Primary key
+work_session_id
+bigint unsigned
+FK → work_sessions.id
+requested_by
+bigint unsigned
+FK → users.id — the worker
+reason
+text
+Worker's explanation — mandatory
+status
+enum
+'pending', 'approved', 'declined'
+reviewed_by
+bigint unsigned nullable
+FK → users.id — the admin who acted
+review_note
+text nullable
+Admin's optional decline reason
+reviewed_at
+timestamp nullable
+When admin approved or declined
+message_id
+bigint unsigned
+FK → messages.id — the auto-generated inbox message
+created_at
+timestamp
+Standard Laravel
+updated_at
+timestamp
+Standard Laravel
+2. Activity Timer on Daily Plans
+Workers can start a live timer directly from a daily plan task. When stopped, the timer automatically creates an activity log entry — no manual re-entry needed.
+2.1 Timer States
+State
+Description
+How to get here
+Idle
+Timer not started
+Default state of every plan
+Running
+Timer actively counting
+Worker clicks Start
+Paused
+Counting stopped, time saved
+Worker clicks Pause
+Stopped
+Complete, log created
+Worker clicks Stop or auto-stop at clock-out
+2.2 State Transitions
+Idle → Running: worker hits Start.
+Running → Paused: worker hits Pause.
+Paused → Running: worker hits Resume.
+Running → Stopped: worker hits Stop, or clock-out triggers auto-stop.
+Paused → Stopped: clock-out auto-stops even paused timers, capturing accumulated time.
+2.3 Auto-Stop at Clock-Out
+At clock-out, system checks for any Running or Paused timers.
+Shows confirmation prompt with task name and accumulated time.
+On confirm — timer stops, activity log created with stop_reason = clock_out.
+2.4 Abandoned Timer Safety Net
+A scheduled job runs every 30 minutes.
+Finds timers in running state where timer_started_at is older than the configured threshold (default 3 hours, adjustable per organization by super admin).
+Auto-stops the timer, calculates duration up to cutoff, creates activity log with stop_reason = system_timeout.
+Sets is_verified = false on the log entry so admin can review it.
+Notifies both the worker and their admin via the inbox.
+2.5 New columns added to daily_plans
+Column
+Type
+Notes
+timer_status
+enum
+'idle', 'running', 'paused', 'stopped'
+timer_started_at
+timestamp nullable
+When the current running segment began
+timer_accumulated_minutes
+int
+Total minutes from all previous segments
+work_session_id
+bigint unsigned
+FK → work_sessions.id
+is_assigned
+boolean
+True = created by system from admin template. Worker cannot delete.
+task_template_id
+bigint unsigned nullable
+FK → task_templates.id. Null for personal plans.
+personal_recurring_task_id
+bigint unsigned nullable
+FK → personal_recurring_tasks.id. Null if not from personal recurrence.
+carried_from_plan_id
+bigint unsigned nullable
+FK → daily_plans.id. References the original plan this was carried from.
+carry_over_count
+int
+How many times this task has been carried over. Starts at 0.
+2.6 New columns added to activity_logs
+Column
+Type
+Notes
+work_session_id
+bigint unsigned
+FK → work_sessions.id
+stop_reason
+enum
+'manual', 'clock_out', 'system_timeout'
+is_verified
+boolean
+True for manual/clock_out. False for system_timeout — needs admin review.
+2.7 timer_pauses — Database Table
+Every pause and resume is recorded here so there is a full audit trail of how a worker's time was spent within a task.
+Column
+Type
+Notes
+id
+bigint unsigned
+Primary key
+daily_plan_id
+bigint unsigned
+FK → daily_plans.id
+paused_at
+timestamp
+When pause was hit
+resumed_at
+timestamp nullable
+When resume was hit (null if still paused)
+duration_minutes
+int nullable
+Filled in when resumed
+created_at
+timestamp
+Standard Laravel
+Total duration = timer_accumulated_minutes + current running segment duration.
+3. Admin-Assigned Recurring Tasks
+Admins can create task templates that automatically appear in workers' daily plans on a set schedule — for example a weekly report every Monday or a daily standup note every day.
+3.1 How it works
+Admin creates a task template with a name, work type, expected duration, and recurrence schedule.
+They assign it to specific workers, the whole department, or everyone.
+A Laravel scheduled job runs every midnight and auto-generates daily_plans rows for all assigned workers on the days the template is due.
+Workers see the task pre-populated in their plan. They cannot delete it since it was assigned, but they log against it and mark completion as normal.
+Admin can see compliance — who completed the assigned task and who did not.
+3.2 task_templates — Database Table
+Column
+Type
+Notes
+id
+bigint unsigned
+Primary key
+title
+varchar(255)
+Name of the recurring task
+work_type
+enum
+'direct', 'indirect', 'growth'
+expected_duration_minutes
+int unsigned
+Planned time in minutes
+recurrence_type
+enum
+'daily', 'weekly', 'one_time'
+recurrence_day
+tinyint nullable
+0=Sunday to 6=Saturday. Used for weekly recurrence.
+department_id
+bigint unsigned nullable
+If set, applies to entire department
+created_by
+bigint unsigned
+FK → users.id (admin who created it)
+is_active
+boolean
+Soft disable without deleting
+created_at
+timestamp
+Standard Laravel
+updated_at
+timestamp
+Standard Laravel
+3.3 task_template_assignments — Database Table
+Used when a template is assigned to specific individual workers rather than a whole department.
+Column
+Type
+Notes
+id
+bigint unsigned
+Primary key
+task_template_id
+bigint unsigned
+FK → task_templates.id
+user_id
+bigint unsigned
+FK → users.id (assigned worker)
+created_at
+timestamp
+Standard Laravel
+4. Worker Personal Recurring Tasks
+Workers can set up their own recurring tasks independently — without any admin involvement. These are personal habits or routines the worker wants auto-generated in their daily plan on a schedule they define themselves.
+4.1 How it differs from admin-assigned tasks
+Aspect
+Admin-Assigned Tasks
+Worker Personal Recurring Tasks
+Who creates it
+Admin or Super Admin
+The worker themselves
+Who can edit it
+Admin only
+The worker themselves
+Who can delete it
+Admin only
+The worker themselves
+Can worker delete the plan entry
+No — it is assigned
+Yes — they own it
+Visible to admin in team overview
+Yes, with compliance tracking
+Yes, visible as a normal plan entry
+Compliance tracked by admin
+Yes
+No — personal discipline only
+4.2 How it works
+Worker goes to their daily plan section and creates a personal recurring task — giving it a name, work type, priority, expected duration, and recurrence schedule (daily or weekly on a specific day).
+The same midnight scheduled job that handles admin templates also picks up active personal recurring tasks and auto-generates plan entries for the worker on the scheduled days.
+The worker can edit or delete their personal recurring task at any time.
+Deleting a personal recurring task stops future auto-generation but does not delete already-generated plan entries.
+Admin can see personal recurring task entries in the team overview just like any other plan — they appear as normal plan entries with no special admin controls over them.
+4.3 personal_recurring_tasks — Database Table
+Column
+Type
+Notes
+id
+bigint unsigned
+Primary key
+user_id
+bigint unsigned
+FK → users.id — the worker who owns this
+title
+varchar(255)
+Name of the recurring task
+work_type
+enum
+'direct', 'indirect', 'growth'
+priority
+enum
+'high', 'medium', 'low'
+expected_duration_minutes
+int unsigned
+Planned time in minutes
+recurrence_type
+enum
+'daily', 'weekly'
+recurrence_day
+tinyint nullable
+0=Sunday to 6=Saturday. Used for weekly recurrence.
+is_active
+boolean
+Worker can pause without deleting
+created_at
+timestamp
+Standard Laravel
+updated_at
+timestamp
+Standard Laravel
+personal_recurring_tasks is intentionally separate from task_templates to keep worker-owned recurrence clearly apart from admin-assigned templates. Mixing them in one table creates messy policy and permission logic.
+5. Daily Plan Carry-Over
+When a worker ends their day with incomplete plans, the system always prompts them to decide what to do with each one. Nothing is carried over automatically — the worker makes the decision themselves every time.
+5.1 When the prompt appears
+At clock-out — after timers are resolved, before the session closes, the system checks for any plans still in pending or partial status.
+If any are found, the carry-over prompt appears. Clock-out does not complete until the worker has made a decision on every incomplete plan.
+If the session was auto-closed by the scheduled job (worker forgot to clock out), the carry-over prompt appears the next time the worker logs in — shown as a priority notice before they can clock in for the new day.
+5.2 The carry-over prompt
+Each incomplete plan is shown individually with the following:
+Task name — read only.
+Completion status — shows whether the task was not started or partially done (based on linked activity logs).
+Priority — pre-filled with yesterday's priority but editable. Worker can upgrade to High if the task is now overdue and more urgent.
+Three action buttons — Carry Over, Cancel, Leave for now.
+The worker decides per task — not a blanket carry-all button. Each task gets its own decision.
+5.3 The three choices explained
+Choice
+What happens
+Plan status after
+Carry Over
+A new plan entry is created for tomorrow. Priority is saved as adjusted. carried_from_plan_id links back to today's plan. Original plan marked carried_over.
+Today: carried_over. Tomorrow: pending (new entry)
+Cancel
+Plan is marked cancelled. No carry-over. No new entry created.
+Today: cancelled
+Leave for now
+Plan stays as pending on today's date. Surfaces in a 'Pending from previous days' section on the worker's dashboard.
+Today: pending (unchanged)
+5.4 Priority adjustment at carry-over
+When a worker chooses Carry Over, the priority field is pre-filled with the original plan's priority.
+The worker can change it before confirming — for example upgrading a Medium priority task to High because it is now overdue.
+The adjusted priority is saved on the new carry-over plan entry. The original plan keeps its original priority unchanged.
+5.5 Carry-over chain tracking
+Every time a plan is carried over, the new entry stores carried_from_plan_id pointing to the plan it came from.
+carry_over_count increments by one each time — so a task carried over 3 days in a row has carry_over_count = 3.
+This chain allows full traceability — admin can trace a task back to when it was originally created and see how many times it has been rolled over.
+5.6 Admin visibility of carried-over plans
+In the team overview, carried-over plan entries show an amber 'Carried Over' badge next to the task name.
+Admin can filter the team overview by carry-over status to quickly spot workers with a growing backlog.
+If the same task has a carry_over_count above the configured threshold (default 3, adjustable by admin), it automatically appears in the admin's attention list as a flag — not a disciplinary alert, just a prompt to check in with the worker.
+The carry-over count and history are visible when the admin drills into a worker's plan detail.
+5.7 Changes to daily_plans table for carry-over
+Column
+Type
+Notes
+carried_from_plan_id
+bigint unsigned nullable
+FK → daily_plans.id. References the plan this was carried from. Null for original plans.
+carry_over_count
+int
+How many times this task chain has been carried over. Starts at 0 on original plan.
+The existing status enum on daily_plans already includes 'carried_over' and 'cancelled' from the original PRD. No change needed there — those values are now actively used by this feature.
+6. Inbox — Internal Communication Module
+The inbox is a core module of the platform. It is the single place where every worker, admin, and super admin receives messages, notifications, letters, and system alerts. It also supports sending messages and file attachments.
+6.1 Who has an inbox
+Role
+Where inbox lives
+Can send to
+Worker
+Vue worker portal
+Their admin
+Admin
+Filament panel
+Individual workers, whole department
+Super Admin
+Filament panel
+Any admin or worker
+6.2 Message types
+Type
+Who sends it
+Who receives it
+Description
+direct
+Worker, Admin, Super Admin
+One specific person
+Standard one-to-one message with optional attachments
+broadcast
+Admin, Super Admin
+Whole department or all workers
+One message delivered to many recipients
+system
+Platform automatically
+Worker or Admin
+Auto-generated alerts — session auto-closed, timer stopped, carry-over reminder
+letter
+Platform on letter generation
+The worker the letter is for
+Delivers the generated PDF letter to the worker's inbox
+reopen_request
+Worker
+Their admin
+Session reopen request with Approve and Decline buttons inline
+reopen_response
+Admin
+The requesting worker
+Approval or decline notification for a reopen request
+6.3 File attachments
+Any message can include one or more file attachments — documents, images, or PDFs.
+When a letter is generated, it is automatically attached to the letter-type inbox message sent to the worker.
+Workers can attach files when messaging their admin — for example submitting a supporting document.
+File size limits and allowed file types are configurable by the super admin in system settings.
+6.4 Unread badge
+Unread message count shows as a badge on the inbox icon in the worker portal navigation and the Filament panel sidebar.
+Badge clears as messages are opened and read.
+6.5 messages — Database Table
+Column
+Type
+Notes
+id
+bigint unsigned
+Primary key
+sender_id
+bigint unsigned nullable
+FK → users.id. Null for system-generated messages.
+subject
+varchar(255)
+Message subject line
+body
+text
+Message content
+message_type
+enum
+'direct', 'broadcast', 'system', 'letter', 'reopen_request', 'reopen_response'
+organization_id
+bigint unsigned
+FK → organizations.id — scopes the message
+created_at
+timestamp
+Standard Laravel
+updated_at
+timestamp
+Standard Laravel
+6.6 message_recipients — Database Table
+Column
+Type
+Notes
+id
+bigint unsigned
+Primary key
+message_id
+bigint unsigned
+FK → messages.id
+recipient_id
+bigint unsigned
+FK → users.id
+read_at
+timestamp nullable
+When the recipient opened the message
+created_at
+timestamp
+Standard Laravel
+6.7 message_attachments — Database Table
+Column
+Type
+Notes
+id
+bigint unsigned
+Primary key
+message_id
+bigint unsigned
+FK → messages.id
+file_path
+varchar(255)
+Stored path to the file
+file_name
+varchar(255)
+Original file name shown to recipient
+file_type
+varchar(100)
+MIME type e.g. application/pdf, image/png
+file_size
+int unsigned
+File size in bytes
+created_at
+timestamp
+Standard Laravel
+7. Company Letterhead
+Organizations upload their official letterhead as separate header and footer images. The system automatically detects dimensions — no manual pixel input required from the admin.
+7.1 Upload and setup flow
+Admin uploads a header image (PNG recommended, transparent background supported).
+Admin uploads a footer image separately.
+System automatically reads the natural dimensions of both images using PHP's getimagesize() — no height input needed from the admin.
+A live preview renders immediately showing exactly how a sample letter will look.
+Admin sets an accent color used for tables, dividers, and headings inside the letter body.
+Only one active letterhead per organization at a time.
+7.2 company_letterheads — Database Table
+Column
+Type
+Notes
+id
+bigint unsigned
+Primary key
+organization_id
+bigint unsigned
+FK → organizations.id
+company_name
+varchar(255)
+Shown as fallback if no image uploaded
+header_image_path
+varchar(255)
+Stored path to header image
+footer_image_path
+varchar(255)
+Stored path to footer image
+header_height_px
+int
+Auto-detected on upload — not entered by admin
+footer_height_px
+int
+Auto-detected on upload — not entered by admin
+accent_color
+varchar(7)
+Hex color e.g. #1a3c5e
+is_active
+boolean
+Active letterhead for this organization
+created_at
+timestamp
+Standard Laravel
+updated_at
+timestamp
+Standard Laravel
+8. Letters Module in the Admin Panel
+The Letters module lives inside the Filament Admin Panel and has four sub-sections covering everything related to official company correspondence.
+8.1 Letterhead Settings
+Admin uploads header and footer images here.
+Live preview renders automatically after upload — no manual configuration needed.
+Admin sets accent color for letter body content.
+Shows current active letterhead with upload date.
+Previous letterheads are kept in history but only one is active at a time.
+8.2 Letter Templates
+Lists all the company's templates — appointment, warning, query, confirmation, and custom ones.
+Shows which are based on system defaults and which have been customized.
+Admin edits templates in a rich text editor with a sidebar of available placeholders to click and insert.
+Admin can create new custom templates from scratch.
+Templates are per-company — edits never affect other organizations or the system defaults.
+8.3 Generate Letter
+Admin selects a worker from a dropdown and selects the letter type.
+System loads the company's customized template and auto-fills all system placeholders.
+Admin fills in any custom fields specific to that letter.
+Live preview renders on screen showing the actual header image, letter body, and footer image exactly as it will print.
+Admin clicks Generate — PDF is created using Browsershot rendering a Blade view.
+PDF is stored, recorded in generated_letters, and automatically delivered to the worker's inbox as a letter-type message with the PDF attached.
+If the letter type requires acknowledgement (warning, query), the worker sees an acknowledgement prompt in their inbox.
+8.4 Issued Letters
+Full history of every letter ever generated — filterable by worker, letter type, and date range.
+Shows acknowledgement status — pending or confirmed — for letters that require it.
+Admin can re-download or resend any previously issued letter.
+Super Admin can see issued letters across all organizations.
+8.5 letter_templates — Database Table
+Column
+Type
+Notes
+id
+bigint unsigned
+Primary key
+organization_id
+bigint unsigned nullable
+Null = system default template
+letter_type
+enum
+'appointment', 'warning', 'query', 'confirmation', 'custom'
+name
+varchar(255)
+Display name e.g. Warning Letter
+subject_template
+varchar(255)
+e.g. Warning — {{worker_name}}
+body_template
+longtext
+HTML body with placeholder variables
+is_system_default
+boolean
+True for platform-provided defaults
+created_by
+bigint unsigned
+FK → users.id
+last_edited_by
+bigint unsigned nullable
+FK → users.id
+created_at
+timestamp
+Standard Laravel
+updated_at
+timestamp
+Standard Laravel
+8.6 Available placeholders
+Placeholder
+Replaced with
+{{worker_name}}
+Full name from users table
+{{worker_department}}
+Department name
+{{date}}
+Letter generation date
+{{admin_name}}
+Name of the admin generating the letter
+{{company_name}}
+From company_letterheads table
+{{position}}
+Worker job title
+{{custom_field_1}}
+Free field filled in by admin at generation time
+8.7 generated_letters — Database Table
+Column
+Type
+Notes
+id
+bigint unsigned
+Primary key
+organization_id
+bigint unsigned
+FK → organizations.id
+worker_id
+bigint unsigned
+FK → users.id — letter recipient
+generated_by
+bigint unsigned
+FK → users.id — admin who issued it
+letter_template_id
+bigint unsigned
+FK → letter_templates.id
+letter_type
+enum
+Copied from template at generation time
+subject
+varchar(255)
+Rendered subject with placeholders filled
+body_snapshot
+longtext
+Final rendered HTML saved at generation time
+pdf_path
+varchar(255)
+Path to stored PDF
+custom_fields
+json
+Fields the admin filled in at generation time
+generated_at
+timestamp
+When the letter was created
+acknowledged_at
+timestamp nullable
+When worker confirmed receipt
+acknowledged_by
+bigint unsigned nullable
+FK → users.id
+created_at
+timestamp
+Standard Laravel
+updated_at
+timestamp
+Standard Laravel
+8.8 Worker Acknowledgement
+Worker receives the letter in their inbox as a message with the PDF attached.
+If acknowledgement is required, a prompt appears: "This letter requires your acknowledgement. Click below to confirm you have read it."
+Worker clicks Acknowledge Receipt — acknowledged_at and acknowledged_by are recorded immediately.
+Admin sees acknowledgement status in the Issued Letters view — pending or confirmed.
+Creates a legally traceable record entirely within the system — no paper signatures needed.
+9. Summary of All Schema Changes
+Quick reference of every new or modified table from today's full discussion.
+Table
+Status
+Purpose
+work_sessions
+New
+Stores daily clock-in/clock-out sessions per worker
+session_reopen_requests
+New
+Worker-initiated requests to reopen a system-closed session
+timer_pauses
+New
+Audit trail of every pause and resume on a task timer
+task_templates
+New
+Admin-created recurring task definitions
+task_template_assignments
+New
+Links admin task templates to specific individual workers
+personal_recurring_tasks
+New
+Worker-owned recurring task definitions — self-managed
+messages
+New
+All inbox messages — direct, broadcast, system, letter, reopen
+message_recipients
+New
+Tracks each recipient and their individual read status
+message_attachments
+New
+Files attached to inbox messages
+company_letterheads
+New
+Header/footer images and branding settings per organization
+letter_templates
+New
+Customizable per-company letter templates
+generated_letters
+New
+Full record of every official letter issued through the system
+daily_plans
+Modified
+Added: timer_status, timer_started_at, timer_accumulated_minutes, work_session_id, is_assigned, task_template_id, personal_recurring_task_id, carried_from_plan_id, carry_over_count
+activity_logs
+Modified
+Added: work_session_id, stop_reason, is_verified
+End of Addendum v3.0 — WorkTrack Pro Feature Discussion, April 2026
