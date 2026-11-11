@@ -96,7 +96,7 @@
                             <div class="flex items-center ml-4 gap-2">
                                 <!-- Timer Controls -->
                                 <div class="flex items-center gap-2 mr-2">
-                                    <div class="text-xs font-mono text-gray-600 w-[64px] text-right">
+                                    <div class="text-xs font-mono text-gray-600 w-16 text-right">
                                         {{ formatElapsed(plan.id) }}
                                     </div>
 

@@ -34,7 +34,7 @@
 .kb-content hr { @apply border-gray-200 my-6; }
 
 /* Editor-only */
-.kb-editor .ProseMirror { @apply min-h-[320px] outline-none; }
+.kb-editor .ProseMirror { @apply min-h-80 outline-none; }
 .kb-editor .ProseMirror p.is-editor-empty:first-child::before {
     content: attr(data-placeholder);
     @apply text-gray-400 float-left h-0 pointer-events-none;
