@@ -139,6 +139,7 @@ class TimerService
                     'task_name' => $plan->task_name,
                     'project_client' => $plan->project_client,
                     'work_type' => $plan->work_type ?: 'direct',
+                    'work_type_id' => $plan->work_type_id,
                     'start_time' => $localEnd->copy()->subSeconds($totalSeconds)->format('H:i'),
                     'end_time' => $localEnd->format('H:i'),
                     'duration_minutes' => max(1, (int) ceil($totalSeconds / 60)),

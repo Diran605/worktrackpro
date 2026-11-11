@@ -16,6 +16,8 @@ class DailyPlanResource extends JsonResource
             'project_client' => $this->project_client,
             'project_client_id' => $this->project_client_id,
             'work_type' => $this->work_type ?: 'direct',
+            'work_type_id' => $this->work_type_id,
+            'work_type_name' => $this->work_type_id ? $this->workTypeRecord?->name : null,
             'is_assigned' => (bool) $this->is_assigned,
             'system' => $this->system_id && $this->system
                 ? ['id' => $this->system->id, 'name' => $this->system->name, 'slug' => $this->system->slug]

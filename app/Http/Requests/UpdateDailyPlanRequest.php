@@ -6,6 +6,7 @@ use App\Enums\Priority;
 use App\Enums\PlanStatus;
 use App\Enums\WorkType;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
 
 class UpdateDailyPlanRequest extends FormRequest
@@ -23,6 +24,10 @@ class UpdateDailyPlanRequest extends FormRequest
             'project_client' => ['nullable', 'string', 'max:255'],
             'priority' => ['sometimes', 'required', new Enum(Priority::class)],
             'work_type' => ['sometimes', 'required', new Enum(WorkType::class)],
+            'work_type_id' => ['nullable', 'integer', Rule::exists('work_types', 'id')
+                ->where('organisation_id', $this->user()->organisation_id)
+                ->where('is_active', true)
+                ->whereNull('deleted_at')],
             'project_client_id' => ['nullable', 'integer', 'exists:project_clients,id'],
             'expected_duration_minutes' => ['sometimes', 'required', 'integer', 'min:1'],
             'notes' => ['nullable', 'string'],

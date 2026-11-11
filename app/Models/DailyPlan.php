@@ -14,7 +14,7 @@ use App\Traits\Auditable;
 
 class DailyPlan extends Model
 {
-    use HasFactory, Auditable, SoftDeletes;
+    use HasFactory, Auditable, SoftDeletes, \App\Traits\HasWorkTypeCategory;
 
     protected $fillable = [
         'user_id',
@@ -40,6 +40,7 @@ class DailyPlan extends Model
         'carry_over_decision',
         'carry_over_decided_at',
         'work_type',
+        'work_type_id',
         'system_id',
         'manual_change_request_id',
     ];

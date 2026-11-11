@@ -18,7 +18,7 @@ class LookupController extends Controller
         $types = WorkType::where('organisation_id', $request->user()->organisation_id)
             ->where('is_active', true)
             ->orderBy('name')
-            ->get(['id', 'name', 'color']);
+            ->get(['id', 'name', 'category', 'color']);
 
         return response()->json($types);
     }

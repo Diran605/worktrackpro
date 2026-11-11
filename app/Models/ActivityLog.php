@@ -13,7 +13,7 @@ use App\Traits\Auditable;
 
 class ActivityLog extends Model
 {
-    use HasFactory, Auditable, SoftDeletes;
+    use HasFactory, Auditable, SoftDeletes, \App\Traits\HasWorkTypeCategory;
 
     protected $fillable = [
         'user_id',
@@ -63,10 +63,5 @@ class ActivityLog extends Model
     public function workSession(): BelongsTo
     {
         return $this->belongsTo(WorkSession::class);
-    }
-
-    public function workTypeRecord(): BelongsTo
-    {
-        return $this->belongsTo(WorkType::class, 'work_type_id');
     }
 }

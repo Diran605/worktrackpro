@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Enums\WorkType;
 use App\Enums\CompletionType;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
 
 class StoreActivityLogRequest extends FormRequest
@@ -20,7 +21,12 @@ class StoreActivityLogRequest extends FormRequest
             'date' => ['required', 'date'],
             'task_name' => ['required', 'string', 'max:255'],
             'project_client' => ['nullable', 'string', 'max:255'],
-            'work_type' => ['required', new Enum(WorkType::class)],
+            // Pick the organisation's own work type; its category is stored automatically.
+            'work_type' => ['required_without:work_type_id', new Enum(WorkType::class)],
+            'work_type_id' => ['nullable', 'integer', Rule::exists('work_types', 'id')
+                ->where('organisation_id', $this->user()->organisation_id)
+                ->where('is_active', true)
+                ->whereNull('deleted_at')],
             'start_time' => ['nullable', 'date_format:H:i:s,H:i'],
             'end_time' => ['nullable', 'date_format:H:i:s,H:i'],
             'duration_minutes' => ['nullable', 'integer', 'min:1'],

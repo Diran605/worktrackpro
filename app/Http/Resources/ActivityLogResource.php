@@ -19,6 +19,9 @@ class ActivityLogResource extends JsonResource
                 'label' => $this->work_type->label(),
                 'color' => $this->work_type->color(),
             ],
+            // The organisation's own type name (e.g. "Client calls"); work_type above is its category.
+            'work_type_id' => $this->work_type_id,
+            'work_type_name' => $this->work_type_id ? $this->workTypeRecord?->name : null,
             'start_time' => $this->start_time,
             'end_time' => $this->end_time,
             'duration_minutes' => $this->duration_minutes,

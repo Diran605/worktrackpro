@@ -31,6 +31,7 @@ class Organisation extends Model
     protected static function booted(): void
     {
         static::saved(fn (Organisation $org) => \App\Support\LocalTime::forget($org->id));
+        static::created(fn (Organisation $org) => WorkType::createDefaultsFor($org->id));
     }
 
     public function localNow(): \Carbon\CarbonImmutable

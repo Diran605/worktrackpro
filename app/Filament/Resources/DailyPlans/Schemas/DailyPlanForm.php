@@ -82,10 +82,14 @@ class DailyPlanForm
                     ->default('medium')
                     ->required(),
 
-                Select::make('work_type')
+                Select::make('work_type_id')
                     ->label('Work Type')
-                    ->options(collect(\App\Enums\WorkType::cases())->mapWithKeys(fn ($c) => [$c->value => $c->label()]))
-                    ->default('direct')
+                    ->options(fn () => \App\Models\WorkType::query()
+                        ->where('organisation_id', $user->organisation_id)
+                        ->where('is_active', true)
+                        ->orderBy('name')
+                        ->get()
+                        ->mapWithKeys(fn ($t) => [$t->id => "{$t->name} ({$t->category->label()})"]))
                     ->required(),
 
                 TextInput::make('expected_duration_minutes')

@@ -102,6 +102,7 @@ class CarryOverController extends Controller
                 'project_client_id' => $plan->project_client_id,
                 'priority' => $priority ?? ($plan->priority?->value ?? 'medium'),
                 'work_type' => $plan->work_type ?: 'direct',
+                'work_type_id' => $plan->work_type_id,
                 'expected_duration_minutes' => (int) $plan->expected_duration_minutes,
                 'notes' => $plan->notes,
                 'status' => PlanStatus::Pending,

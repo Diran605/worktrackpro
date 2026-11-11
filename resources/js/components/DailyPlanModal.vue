@@ -68,11 +68,12 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Work Type</label>
-                        <select v-model="form.work_type" required
+                        <select v-model="form.work_type_id" required
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 shadow-sm">
-                            <option value="direct">Direct</option>
-                            <option value="indirect">Indirect</option>
-                            <option value="growth">Growth</option>
+                            <option value="" disabled>Select work type...</option>
+                            <option v-for="wt in workTypes" :key="wt.id" :value="wt.id">
+                                {{ wt.name }}<template v-if="wt.name.toLowerCase() !== wt.category"> ({{ wt.category }})</template>
+                            </option>
                         </select>
                     </div>
                 </div>
@@ -133,13 +134,24 @@ const form = reactive({
     project_client: '',
     project_client_id: '',
     priority: 'medium',
-    work_type: 'direct',
+    work_type_id: '',
     expected_duration_minutes: 60,
     status: 'pending',
     notes: ''
 });
 
 const projectClients = ref([]);
+const workTypes = ref([]);
+
+const fetchWorkTypes = async () => {
+    try {
+        workTypes.value = (await api.get('/work-types')).data;
+        if (!form.work_type_id && workTypes.value.length) form.work_type_id = workTypes.value[0].id;
+    } catch (e) {
+        console.error('Failed to load work types', e);
+    }
+};
+fetchWorkTypes();
 
 const fetchProjectClients = async () => {
     try {
@@ -159,7 +171,7 @@ watch(() => props.planData, (newData) => {
         form.project_client = newData.project_client || '';
         form.project_client_id = newData.project_client_id || '';
         form.priority = newData.priority?.value || newData.priority;
-        form.work_type = newData.work_type || 'direct';
+        form.work_type_id = newData.work_type_id || '';
         form.expected_duration_minutes = newData.expected_duration_minutes;
         form.status = newData.status?.value || newData.status;
         form.notes = newData.notes || '';
@@ -169,7 +181,7 @@ watch(() => props.planData, (newData) => {
         form.project_client = '';
         form.project_client_id = '';
         form.priority = 'medium';
-        form.work_type = 'direct';
+        form.work_type_id = workTypes.value[0]?.id || '';
         form.expected_duration_minutes = 60;
         form.status = 'pending';
         form.notes = '';

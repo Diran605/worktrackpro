@@ -63,7 +63,7 @@
                                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 shadow-sm">
                             <option value="" disabled>Select work type...</option>
                             <option v-for="wt in workTypes" :key="wt.id" :value="wt.id">
-                                {{ wt.name }}
+                                {{ wt.name }}<template v-if="wt.name.toLowerCase() !== wt.category"> ({{ wt.category }})</template>
                             </option>
                         </select>
                     </div>
@@ -224,6 +224,7 @@ watch(() => props.logData, (newData) => {
         form.task_name = newData.task_name;
         form.project_client = newData.project_client || '';
         form.work_type = newData.work_type.value;
+        form.work_type_id = newData.work_type_id || '';
         form.start_time = newData.start_time ? newData.start_time.substring(0, 5) : '';
         form.end_time = newData.end_time ? newData.end_time.substring(0, 5) : '';
         form.duration_minutes = newData.duration_minutes || '';
@@ -237,6 +238,7 @@ watch(() => props.logData, (newData) => {
         form.task_name = '';
         form.project_client = '';
         form.work_type = 'direct';
+        form.work_type_id = workTypes.value[0]?.id || '';
         form.start_time = '';
         form.end_time = '';
         form.duration_minutes = '';
