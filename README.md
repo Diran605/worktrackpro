@@ -14,7 +14,7 @@ Work tracking for teams: daily plans with timers, activity logs, attendance (clo
 - Composer 2
 - MySQL 8 (tests use in-memory SQLite)
 - Node.js 20+
-- Optional now, required for manual PDF generation later: [qpdf](https://qpdf.sourceforge.io)
+- [qpdf](https://qpdf.sourceforge.io), to merge uploaded PDF sections into generated manuals. Without it, those sections appear as a page pointing to WorkTrack Pro. On Windows: `winget install --id QPDF.QPDF -e`, then set `QPDF_PATH` in `.env` (e.g. `C:/Program Files/qpdf 12.4.2/bin/qpdf.exe`).
 
 ## Setup
 
@@ -65,6 +65,7 @@ Several features rely on Laravel's scheduler and the queue.
 | `worktrack:timers:stop-abandoned` | every 30 min | Stops timers running past the threshold (logged as unverified) |
 | `worktrack:plans:generate-recurring` | hourly | Creates today's plans from recurring tasks, per organisation's date |
 | `worktrack:knowledge:stale-sections` | Mondays 08:00 | Reminds owners about manual sections not verified for 90 days |
+| `worktrack:knowledge:prune-exports` | Sundays 03:00 | Deletes generated manual PDFs older than 30 days (they're regenerated on request) |
 
 On a server, run the scheduler every minute:
 
@@ -74,7 +75,7 @@ On a server, run the scheduler every minute:
 
 On Windows, create a Task Scheduler task that runs `php artisan schedule:run` in the project folder every minute, or run `php artisan schedule:work` in a terminal while developing.
 
-Run a queue worker as well (`composer dev` already starts one):
+Run a queue worker as well (`composer dev` already starts one). Large manual PDFs (over 25 sections) are generated in the queue:
 
 ```bash
 php artisan queue:work
@@ -119,5 +120,5 @@ Feature tests cover timers, clock-out and carry-over, authorization, timezones, 
 
 ## Project notes
 
-- `implementation_plan_knowledge_base.md`: Knowledge & Readiness module plan and status (Phases 0–2 done)
+- `implementation_plan_knowledge_base.md`: Knowledge & Readiness module plan and status (Phases 0–3 done)
 - `implementation_plan_phase6.md`: earlier feature addendum plan (attendance, timers, recurring tasks, inbox, letters)

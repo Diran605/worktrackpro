@@ -26,6 +26,10 @@
                                 <span class="text-gray-400 mr-2">{{ section.number }}</span>{{ section.title }}
                             </h1>
                             <div class="flex gap-2 shrink-0">
+                                <button @click="showExport = true"
+                                        class="px-3 py-1.5 rounded-lg text-sm font-semibold bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
+                                    ⬇ PDF
+                                </button>
                                 <router-link v-if="manual?.can?.contribute" :to="{ name: 'ManualEditor', params: { slug }, query: { section: section.id } }"
                                              class="px-3 py-1.5 rounded-lg text-sm font-semibold bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
                                     ✎ {{ manual.can.approve ? 'Edit' : 'Suggest an edit' }}
@@ -76,6 +80,8 @@
                 </template>
             </article>
         </div>
+
+        <ExportManualDialog v-if="showExport && manual" :slug="slug" :tree="manual.tree" :preselect="[sectionId]" @close="showExport = false" />
     </div>
 </template>
 
@@ -84,6 +90,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '../../lib/axios';
 import ManualTree from '../../components/knowledge/ManualTree.vue';
+import ExportManualDialog from '../../components/knowledge/ExportManualDialog.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -96,6 +103,7 @@ const section = ref(null);
 const loading = ref(true);
 const error = ref(null);
 const marking = ref(false);
+const showExport = ref(false);
 
 const pdfSrc = computed(() => {
     const f = section.value?.file;

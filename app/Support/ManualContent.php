@@ -64,6 +64,63 @@ final class ManualContent
     }
 
     /**
+     * Stored HTML prepared for the PDF: images point at their files on disk, and each link's
+     * address is printed after its text (so video links etc. still work on paper).
+     */
+    public static function toPrint(?string $html): string
+    {
+        if (!$html || trim($html) === '') {
+            return '';
+        }
+
+        $ids = self::assetIds($html);
+        $disk = \Illuminate\Support\Facades\Storage::disk(config('knowledge.disk'));
+        $paths = ManualAsset::query()->whereIn('id', $ids)->get()
+            ->mapWithKeys(fn (ManualAsset $a) => [$a->id => $disk->exists($a->path) ? $disk->path($a->path) : null]);
+
+        $html = preg_replace_callback(
+            self::STORED_PATTERN,
+            fn ($m) => 'src="' . e($paths[(int) $m[1]] ?? '') . '"',
+            $html
+        );
+
+        $dom = new \DOMDocument();
+        libxml_use_internal_errors(true);
+        $dom->loadHTML('<?xml encoding="UTF-8"><div id="kb-root">' . $html . '</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        libxml_clear_errors();
+
+        foreach (iterator_to_array($dom->getElementsByTagName('a')) as $link) {
+            /** @var \DOMElement $link */
+            $href = trim($link->getAttribute('href'));
+            $text = trim($link->textContent);
+
+            if ($href === '' || str_starts_with($href, '#') || $href === $text) {
+                continue;
+            }
+
+            $note = $dom->createElement('span', ' (' . $href . ')');
+            $note->setAttribute('class', 'link-url');
+            $link->parentNode?->insertBefore($note, $link->nextSibling);
+        }
+
+        // Images whose file is missing would print as a broken box.
+        foreach (iterator_to_array($dom->getElementsByTagName('img')) as $img) {
+            /** @var \DOMElement $img */
+            if ($img->getAttribute('src') === '') {
+                $img->parentNode?->removeChild($img);
+            }
+        }
+
+        $root = $dom->getElementById('kb-root') ?? $dom->documentElement;
+        $out = '';
+        foreach ($root->childNodes as $child) {
+            $out .= $dom->saveHTML($child);
+        }
+
+        return $out;
+    }
+
+    /**
      * Asset IDs referenced by stored HTML (used later for PDF generation).
      */
     public static function assetIds(?string $html): array

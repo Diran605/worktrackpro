@@ -61,6 +61,41 @@ class SystemsTable
                     ->label('Manual')
                     ->icon('heroicon-o-book-open')
                     ->url(fn (System $record) => ManualSectionResource::getUrl('index', ['filters' => ['system_id' => ['value' => $record->id]]])),
+                Action::make('downloadManual')
+                    ->label('Download manual')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('gray')
+                    ->action(function (System $record) {
+                        try {
+                            $export = app(\App\Services\ManualExportService::class)->request(
+                                $record,
+                                auth()->user(),
+                                null,
+                                \App\Models\ManualExport::APPENDICES,
+                            );
+                        } catch (\Illuminate\Validation\ValidationException $e) {
+                            \Filament\Notifications\Notification::make()
+                                ->title(collect($e->errors())->flatten()->first())
+                                ->warning()
+                                ->send();
+
+                            return null;
+                        }
+
+                        if ($export->isReady()) {
+                            return redirect()->to($export->signedDownloadUrl());
+                        }
+
+                        \Filament\Notifications\Notification::make()
+                            ->title($export->status === \App\Models\ManualExport::STATUS_FAILED ? 'The PDF could not be generated' : 'Generating the manual')
+                            ->body($export->status === \App\Models\ManualExport::STATUS_FAILED
+                                ? 'Please try again. If it keeps failing, check the application log.'
+                                : 'This manual is large, so it is being generated in the background. You will get an inbox message when it is ready.')
+                            ->color($export->status === \App\Models\ManualExport::STATUS_FAILED ? 'danger' : 'info')
+                            ->send();
+
+                        return null;
+                    }),
                 EditAction::make(),
                 DeleteAction::make(),
             ]);

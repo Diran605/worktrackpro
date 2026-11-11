@@ -19,6 +19,9 @@ Schedule::command('worktrack:timers:stop-abandoned')
 Schedule::command('worktrack:knowledge:stale-sections')
     ->weeklyOn(1, '08:00');
 
+Schedule::command('worktrack:knowledge:prune-exports')
+    ->weeklyOn(0, '03:00');
+
 // Hourly so every organisation gets its plans soon after its own midnight (safe to re-run).
 Schedule::command('worktrack:plans:generate-recurring')
     ->hourly()

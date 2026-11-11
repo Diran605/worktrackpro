@@ -9,7 +9,7 @@ Turns company systems/projects from "knowledge in people's heads" into structure
 | 0 — Prerequisite fixes | ✅ Done (2026-11-11) |
 | 1 — System registry | ✅ Done (2026-11-11) |
 | 2 — Manuals | ✅ Done (2026-11-11) |
-| 3 — Manual generation (PDF) | Not started |
+| 3 — Manual generation (PDF) | ✅ Done (2026-11-13) |
 | 4 — Competency & readiness | Not started |
 | 5 — Tickets & FAQ | Not started |
 | 6 — Insights | Not started |
@@ -20,6 +20,7 @@ Where the build differs from the plan below:
 - **Import review:** owners can leave sections out when approving a Word import; renaming/reordering happens afterwards in Manual Structure.
 - **Edit "diff":** the review page shows the published version and the proposed version one after the other, plus a warning if the section changed after the edit was started (not a line-by-line diff).
 - **`qpdf` is optional in Phase 2:** without it, PDF page ranges are accepted but not checked against the page count.
+- **Phase 3:** the FAQ appendix waits for Phase 5 (contacts and change log are available now). Exports are reused while nothing in them has changed (a fingerprint of content, structure, letterhead, options and date), not only per manual version. Up to 25 sections are generated during the request; larger manuals go to the queue and the requester gets an inbox message. Without `qpdf`, uploaded PDF sections get a pointer page instead of being merged.
 - Tests: `tests/Feature/{TimerTest,ClockOutCarryOverTest,AuthorizationTest,KnowledgeBaseTest,KnowledgeAdminPagesTest}.php`.
 
 ## Locked Decisions

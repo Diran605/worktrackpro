@@ -20,6 +20,7 @@ Route::middleware('signed')->prefix('kb')->group(function () {
     Route::get('assets/{asset}', [\App\Http\Controllers\KnowledgeFileController::class, 'asset'])->name('kb.asset');
     Route::get('revisions/{revision}/file', [\App\Http\Controllers\KnowledgeFileController::class, 'revisionFile'])->name('kb.revision-file');
     Route::get('changes/{change}/file', [\App\Http\Controllers\KnowledgeFileController::class, 'changeFile'])->name('kb.change-file');
+    Route::get('exports/{export}', [\App\Http\Controllers\KnowledgeFileController::class, 'export'])->name('kb.export');
 });
 
 // For the MVP, everything running on the web routes acts as a catch-all
