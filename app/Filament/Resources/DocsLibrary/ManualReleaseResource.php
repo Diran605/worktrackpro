@@ -33,7 +33,7 @@ class ManualReleaseResource extends Resource
 
     protected static ?string $modelLabel = 'published version';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 6;
 
     public static function canCreate(): bool
     {

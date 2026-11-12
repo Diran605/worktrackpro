@@ -81,6 +81,14 @@ class ManualSection extends Model
         return $this->visibility === self::VISIBILITY_RESTRICTED;
     }
 
+    /** Who the chapter is meant for in the documentation library (none = everyone who can open the manual). */
+    public function audiences(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(DocsAudience::class, 'manual_section_audience', 'manual_section_id', 'audience_id')
+            ->orderBy('position')
+            ->orderBy('name');
+    }
+
     public function system(): BelongsTo
     {
         return $this->belongsTo(System::class);

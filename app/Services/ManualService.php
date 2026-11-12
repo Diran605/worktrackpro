@@ -38,7 +38,7 @@ class ManualService
         return ManualSection::query()
             ->where('system_id', $system->id)
             ->published()
-            ->with('currentRevision')
+            ->with(['currentRevision', 'audiences:id,name'])
             ->orderBy('sort_key')
             ->get();
     }
@@ -62,10 +62,11 @@ class ManualService
         $outline = ManualSection::query()
             ->where('system_id', $system->id)
             ->published()
+            ->with('audiences')
             ->orderBy('sort_key')
             ->get();
 
-        // Latest released revision of each section.
+        // Latest released revision of each section (with the version it was released in).
         $sectionIds = $outline->pluck('id');
         $released = \App\Models\ManualSectionRevision::query()
             ->whereIn('id', fn ($q) => $q->selectRaw('max(id)')
@@ -73,6 +74,7 @@ class ManualService
                 ->whereIn('manual_section_id', $sectionIds)
                 ->whereNotNull('release_id')
                 ->groupBy('manual_section_id'))
+            ->with('release:id,version,is_major,published_at')
             ->get()
             ->keyBy('manual_section_id');
 

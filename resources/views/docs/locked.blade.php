@@ -11,7 +11,7 @@
         <p class="mt-2 text-gray-600">{{ $system->summary }}</p>
     @endif
     <div class="mt-6 bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-        @include('docs.partials.locked-panel', ['system' => $system])
+        @include('docs.partials.locked-panel', ['system' => $system, 'section' => $section])
     </div>
 </div>
 @endsection

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\DocsAccessCode;
 use App\Models\DocsAccessRequest;
+use App\Models\DocsAudience;
 use App\Models\DocsFeedback;
 use App\Models\ManualChangeRequest;
 use App\Models\ManualSection;
@@ -83,12 +84,13 @@ class DocsLibraryTest extends TestCase
         return ManualSection::findOrFail(ManualChangeRequest::findOrFail($id)->manual_section_id);
     }
 
-    private function makeCode(bool $includeRestricted = false, array $attributes = []): string
+    private function makeCode(bool $includeRestricted = false, array $attributes = [], array $audienceIds = []): string
     {
         $code = new DocsAccessCode(array_merge(['organisation_id' => $this->org->id, 'name' => 'Client A', 'is_active' => true], $attributes));
         $plain = $code->assignNewCode();
         $code->save();
         $code->systems()->attach($this->system->id, ['include_restricted' => $includeRestricted]);
+        $code->grants()->first()->audiences()->attach($audienceIds);
 
         return $plain;
     }
@@ -113,7 +115,8 @@ class DocsLibraryTest extends TestCase
             ->assertSee('Acme Documentation')
             ->assertSee('Finance')
             ->assertSee('Payments Gateway')
-            ->assertSee('Version 1.0')
+            ->assertSee('v1.0')            // recently updated
+            ->assertSee('Last updated')    // product card
             ->assertDontSee('Hidden Tool');
     }
 
@@ -397,14 +400,81 @@ class DocsLibraryTest extends TestCase
             ->assertDontSee("/docs/payments-gateway/{$this->admin->slug}", false);
     }
 
-    public function test_pdf_leaves_out_locked_sections(): void
+    public function test_the_library_has_no_pdf_download(): void
     {
-        $response = $this->get('/docs/payments-gateway/pdf');
-        $this->assertTrue($response->isRedirect() || $response->getStatusCode() === 200);
+        $this->get('/docs/payments-gateway')->assertOk()->assertDontSee('Download PDF');
+        $this->get('/docs/payments-gateway/pdf')->assertNotFound();
+    }
 
-        $export = \App\Models\ManualExport::latest('id')->first();
-        $this->assertNotNull($export);
-        $this->assertEqualsCanonicalizing([$this->admin->id, $this->adminChild->id], $export->options['exclude'] ?? []);
+    // ---------------------------------------------------------------------------------------------
+    // Audiences
+    // ---------------------------------------------------------------------------------------------
+
+    public function test_chapters_for_an_audience_need_a_code_that_opens_it(): void
+    {
+        $teachers = DocsAudience::create(['organisation_id' => $this->org->id, 'name' => 'Teachers']);
+        $finance = DocsAudience::create(['organisation_id' => $this->org->id, 'name' => 'Finance']);
+        $this->intro->audiences()->attach($teachers);
+        $page = "/docs/payments-gateway/{$this->intro->slug}";
+
+        // The product page groups guides: Teachers, then the rest under "General".
+        $this->get('/docs/payments-gateway')
+            ->assertOk()
+            ->assertSeeInOrder(['General', 'Administration', 'Teachers', 'Getting started']);
+
+        // Visitors without a code: locked, and told who it is for.
+        $this->get($page)->assertForbidden()
+            ->assertSee('This part of the documentation is for')
+            ->assertSee('Teachers')
+            ->assertDontSee('Refund steps for payments.');
+        $this->get('/docs/search?q=refund')->assertSee('No results');
+        $this->get('/sitemap.xml')->assertDontSee($page, false);
+
+        // A Finance code doesn't open the Teachers chapter…
+        $this->post('/docs/access', ['code' => $this->makeCode(false, ['name' => 'Bursar'], [$finance->id])]);
+        $this->get($page)->assertForbidden();
+
+        // …a Teachers code does, but not the restricted chapter.
+        $this->post('/docs/access', ['code' => $this->makeCode(false, ['name' => 'Teacher'], [$teachers->id])]);
+        $this->get($page)->assertOk()->assertSee('Refund steps for payments.')->assertSee('For:');
+        $this->get("/docs/payments-gateway/{$this->admin->slug}")->assertForbidden();
+
+        $this->get('/docs/access')->assertSee('Payments Gateway')->assertSee('· Teachers', false);
+    }
+
+    public function test_staff_read_every_audience(): void
+    {
+        $teachers = DocsAudience::create(['organisation_id' => $this->org->id, 'name' => 'Teachers']);
+        $this->intro->audiences()->attach($teachers);
+
+        $this->actingAs($this->owner, 'web')
+            ->get("/docs/payments-gateway/{$this->intro->slug}")
+            ->assertOk()
+            ->assertSee('Refund steps for payments.');
+    }
+
+    public function test_audience_of_a_chapter_covers_what_is_under_it(): void
+    {
+        $finance = DocsAudience::create(['organisation_id' => $this->org->id, 'name' => 'Finance']);
+        $this->admin->update(['visibility' => ManualSection::VISIBILITY_INHERIT]);
+        $this->admin->audiences()->attach($finance);
+
+        $this->get("/docs/payments-gateway/{$this->adminChild->slug}")->assertForbidden();
+
+        $this->post('/docs/access', ['code' => $this->makeCode(false, [], [$finance->id])]);
+        $this->get("/docs/payments-gateway/{$this->adminChild->slug}")->assertOk()->assertSee('Rotate the vault keys.');
+    }
+
+    public function test_request_access_says_which_part_was_asked_about(): void
+    {
+        $teachers = DocsAudience::create(['organisation_id' => $this->org->id, 'name' => 'Teachers']);
+        $this->intro->audiences()->attach($teachers);
+
+        $this->post('/docs/payments-gateway/request-access', [
+            'name' => 'Ann', 'email' => 'ann@example.test', 'about' => 'Getting started (for Teachers)',
+        ])->assertSessionHas('docs_request_sent');
+
+        $this->assertStringStartsWith('Asked about: Getting started (for Teachers)', DocsAccessRequest::first()->reason);
     }
 
     public function test_portal_manual_shows_library_details(): void

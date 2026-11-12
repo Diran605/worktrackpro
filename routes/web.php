@@ -34,7 +34,6 @@ $docsRoutes = function () {
     Route::post('docs/access/forget', [\App\Http\Controllers\Docs\AccessController::class, 'forget'])->name('access.forget');
     Route::get('docs/{system}', [\App\Http\Controllers\Docs\SystemController::class, 'show'])->name('system');
     Route::get('docs/{system}/changes', [\App\Http\Controllers\Docs\SystemController::class, 'changes'])->name('changes');
-    Route::get('docs/{system}/pdf', [\App\Http\Controllers\Docs\SystemController::class, 'pdf'])->name('pdf');
     Route::post('docs/{system}/request-access', [\App\Http\Controllers\Docs\AccessController::class, 'request'])->middleware('throttle:3,10')->name('request-access');
     Route::get('docs/{system}/{section}', [\App\Http\Controllers\Docs\SectionController::class, 'show'])->name('section');
     Route::post('docs/{system}/{section}/feedback', [\App\Http\Controllers\Docs\SectionController::class, 'feedback'])->middleware('throttle:20,1')->name('feedback');

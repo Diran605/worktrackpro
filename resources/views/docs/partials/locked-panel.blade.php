@@ -1,11 +1,17 @@
-{{-- "This content is restricted": staff sign-in, access code, request access. Expects: $system --}}
+{{-- "This content is restricted": staff sign-in, access code, request access. Expects: $system, optional $audiences --}}
+@php $audienceNames = isset($audiences) ? $audiences->pluck('name')->join(', ', ' and ') : ''; @endphp
 <div class="border border-amber-200 bg-amber-50 rounded-lg p-6">
     <div class="flex items-center gap-2 text-amber-900">
         @include('docs.partials.lock', ['class' => 'w-6 h-6'])
         <h2 class="text-lg font-bold">This content is restricted</h2>
     </div>
     <p class="mt-2 text-sm text-amber-900">
-        You can read it if you are a member of staff, or if {{ $docs->organisation->name }} has given you an access code.
+        @if ($audienceNames !== '')
+            This part of the documentation is for <strong>{{ $audienceNames }}</strong>.
+            You can read it if you are a member of staff, or with an access code for {{ $audienceNames }}.
+        @else
+            You can read it if you are a member of staff, or if {{ $docs->organisation->name }} has given you an access code.
+        @endif
     </p>
 
     <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -34,6 +40,7 @@
             @else
                 <form method="post" action="{{ $docs->system($system, 'request-access') }}" class="mt-3 space-y-3">
                     @csrf
+                    <input type="hidden" name="about" value="{{ trim(($section->title ?? '') . ($audienceNames !== '' ? ' (for ' . $audienceNames . ')' : '')) }}">
                     <input type="text" name="name" value="{{ old('name') }}" required maxlength="255" placeholder="Your name" aria-label="Your name"
                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-(--docs-accent)">
                     @error('name')<p class="text-sm text-red-600">{{ $message }}</p>@enderror

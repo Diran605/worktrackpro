@@ -44,13 +44,19 @@ class SectionController extends DocsController
             : $this->withHeadingAnchors(ManualContent::toDisplay($current->currentRevision?->body));
 
         $revision = $current->currentRevision;
+        $ancestorIds = $this->ancestorIds($outline, $current);
 
         return response()->view('docs.section', [
             'system' => $system,
             'section' => $current,
             'isLocked' => $isLocked,
             'tree' => $this->tree($outline, $locked),
-            'ancestorIds' => $this->ancestorIds($outline, $current),
+            'ancestorIds' => $ancestorIds,
+            // Who this part of the manual is for: its own audiences and those of the chapters above it.
+            'audiences' => $outline->filter(fn (ManualSection $s) => $s->id === $current->id || isset($ancestorIds[$s->id]))
+                ->flatMap(fn (ManualSection $s) => $s->audiences)
+                ->unique('id')
+                ->values(),
             'body' => $body,
             'headings' => $headings,
             'pdf' => !$isLocked && $current->kind === ManualSection::KIND_UPLOADED_PDF && $revision?->file_path ? [

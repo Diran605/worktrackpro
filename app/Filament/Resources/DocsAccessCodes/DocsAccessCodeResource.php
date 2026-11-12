@@ -126,7 +126,7 @@ class DocsAccessCodeResource extends Resource
                     ]),
 
                 Section::make('What it opens')
-                    ->description('Manuals marked "Restricted" in the library need a code (or a staff sign-in). Public manuals are open to everyone, but their restricted chapters still need a code that includes them.')
+                    ->description('Products marked "Restricted" need a code (or a staff sign-in) to open at all. Inside a product, chapters meant for an audience (e.g. Teachers) need a code that opens that audience, and restricted chapters need "Include restricted chapters". Chapters for everyone are always included.')
                     ->schema([
                         Repeater::make('grants')
                             ->relationship()
@@ -146,6 +146,18 @@ class DocsAccessCodeResource extends Resource
                                 Toggle::make('include_restricted')
                                     ->label('Include restricted chapters')
                                     ->inline(false),
+                                Select::make('audiences')
+                                    ->label('Audiences')
+                                    ->relationship(
+                                        'audiences',
+                                        'name',
+                                        fn (Builder $query) => $query->where('docs_audiences.organisation_id', auth()->user()->organisation_id),
+                                    )
+                                    ->multiple()
+                                    ->preload()
+                                    ->placeholder('Only chapters for everyone')
+                                    ->helperText('Chapters meant for these audiences become readable, e.g. Teachers and Finance.')
+                                    ->columnSpanFull(),
                             ]),
                     ]),
             ]);
@@ -154,7 +166,7 @@ class DocsAccessCodeResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with('systems:id,name'))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['grants.system:id,name', 'grants.audiences:id,name']))
             ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('name')
@@ -168,8 +180,10 @@ class DocsAccessCodeResource extends Resource
                     ->copyMessage('Code copied'),
                 TextColumn::make('systems')
                     ->label('Opens')
-                    ->state(fn (DocsAccessCode $record) => $record->systems
-                        ->map(fn ($s) => $s->name . ($s->pivot->include_restricted ? ' (incl. restricted)' : ''))
+                    ->state(fn (DocsAccessCode $record) => $record->grants
+                        ->map(fn ($g) => ($g->system?->name ?? '?')
+                            . ($g->audiences->isNotEmpty() ? ': ' . $g->audiences->pluck('name')->join(', ') : '')
+                            . ($g->include_restricted ? ' (incl. restricted)' : ''))
                         ->all())
                     ->listWithLineBreaks()
                     ->limitList(3)

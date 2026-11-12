@@ -51,6 +51,11 @@ class Organisation extends Model
         return \App\Support\LocalTime::today($this->id);
     }
 
+    public function docsAudiences(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(DocsAudience::class)->orderBy('position')->orderBy('name');
+    }
+
     public function systemCategories(): HasMany
     {
         return $this->hasMany(SystemCategory::class)->orderBy('position')->orderBy('name');

@@ -161,6 +161,44 @@ class DocsLibraryAdminTest extends TestCase
         $this->assertSame(0, ManualRelease::count());
     }
 
+    public function test_audiences_are_managed_and_assigned_to_chapters_and_codes(): void
+    {
+        $section = $this->publishedSection();
+        $this->actingAs($this->admin);
+
+        $this->get(\App\Filament\Resources\DocsLibrary\DocsAudienceResource::getUrl('index'))->assertOk();
+
+        Livewire::test(\App\Filament\Resources\DocsLibrary\Pages\ListDocsAudiences::class)
+            ->callAction('create', data: ['name' => 'Teachers', 'position' => 0])
+            ->assertHasNoActionErrors();
+        $teachers = \App\Models\DocsAudience::where('name', 'Teachers')->firstOrFail();
+        $this->assertSame($this->admin->organisation_id, $teachers->organisation_id);
+
+        // Another organisation's audience can't be attached.
+        $foreign = \App\Models\DocsAudience::create(['organisation_id' => $this->makeUser('admin')->organisation_id, 'name' => 'Theirs']);
+
+        Livewire::test(ListManualSections::class)
+            ->callTableAction('audiences', $section, data: ['audience_ids' => [$teachers->id, $foreign->id]]);
+        $this->assertNotContains($foreign->id, $section->audiences()->pluck('docs_audiences.id')->all());
+
+        Livewire::test(ListManualSections::class)
+            ->callTableAction('audiences', $section, data: ['audience_ids' => [$teachers->id]])
+            ->assertHasNoTableActionErrors();
+        $this->assertSame([$teachers->id], $section->audiences()->pluck('docs_audiences.id')->all());
+
+        Livewire::test(CreateDocsAccessCode::class)
+            ->fillForm([
+                'name' => 'Teacher',
+                'is_active' => true,
+                'grants' => [['system_id' => $this->system->id, 'include_restricted' => false, 'audiences' => [$teachers->id]]],
+            ])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $grant = DocsAccessCode::where('name', 'Teacher')->firstOrFail()->grants()->firstOrFail();
+        $this->assertSame([$teachers->id], $grant->audiences()->pluck('docs_audiences.id')->all());
+    }
+
     public function test_sections_can_be_restricted_from_manual_structure(): void
     {
         $section = $this->publishedSection();

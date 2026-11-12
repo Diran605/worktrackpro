@@ -61,10 +61,11 @@ A super admin is created too; see `database/seeders/DatabaseSeeder.php`. Change 
 
 ## Documentation library
 
-Each organisation has a public library of its manuals, laid out like a vendor documentation site: systems by category, a reader with a contents tree, search, "What's changed" per version, and PDF download.
+Each organisation has a public library of its manuals, laid out like a vendor documentation site: products (systems) by category, a product page with its guides grouped by audience, a reader with a contents tree, search, and "What's changed" per version. (PDF download is only offered in the staff portal.)
 
 - **Addresses.** The default organisation (`DOCS_DEFAULT_ORGANISATION`, or the first active one) is served at `/`. Every organisation is also at `/org/{slug}`. A super admin can give an organisation its own domain (**Organisations → Documentation library address**, e.g. `docs.example.com`); point the domain's DNS at the server and make sure the web server answers for it.
 - **Who can read what.** *Public* manuals are open to everyone; *Restricted* manuals are listed but need a staff sign-in or an access code; *Not in library* manuals stay in the staff portal. Individual chapters can be restricted under **Knowledge → Manual Structure**.
+- **Audiences** (**Documentation Library → Audiences**) are groups of readers, e.g. *Teachers* or *Finance*. Mark chapters for one or more audiences under **Knowledge → Manual Structure → Who is it for…**; the chapter and everything under it can then only be read by staff and by access codes that open one of those audiences. Product pages list chapters as guide cards under "General" and each audience.
 - **Access codes** (**Documentation Library → Access Codes**) are for clients and other readers outside the staff. Each code opens chosen manuals, optionally including restricted chapters, and can expire or be turned off at any time. Readers can also ask for access from a locked page; requests arrive in the owners' inbox and under **Access Requests**.
 - **Versions.** Approved changes reach staff in the portal straight away. The library shows each manual **as of its last published version**: owners release changes with **Knowledge → Systems → Publish version** (minor or major, with a summary readers see), or tick **Publish to the library now** when approving an urgent fix. Archiving, moving and reordering sections apply to the library immediately.
 - **Staff** signed in to the portal can use **Open in library** to view a manual there with full access.

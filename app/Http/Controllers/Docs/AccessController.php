@@ -15,7 +15,7 @@ class AccessController extends DocsController
 {
     public function show(): View
     {
-        return view('docs.access', ['codes' => $this->access()->codes()->load('systems')]);
+        return view('docs.access', ['codes' => $this->access()->codes()->load('grants.system', 'grants.audiences')]);
     }
 
     public function unlock(Request $request): RedirectResponse
@@ -56,7 +56,14 @@ class AccessController extends DocsController
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
             'reason' => ['nullable', 'string', 'max:2000'],
+            'about' => ['nullable', 'string', 'max:255'],
         ]);
+        $about = $data['about'] ?? null;
+        unset($data['about']);
+        if ($about) {
+            // Which page they were on, e.g. "Finance guide (for Finance)".
+            $data['reason'] = trim("Asked about: {$about}\n\n" . ($data['reason'] ?? ''));
+        }
 
         DocsAccessRequest::create($data + ['system_id' => $system->id, 'ip' => $request->ip()]);
 

@@ -28,7 +28,7 @@ class DocsAccess
     /** @var Collection<int, DocsAccessCode> */
     private Collection $codes;
 
-    /** @var array<int, bool> system id => includes restricted chapters */
+    /** @var array<int, array{restricted: bool, audiences: array<int, int>}> system id => what the visitor's codes open */
     private array $grants = [];
 
     public function __construct(private readonly DocsContext $context)
@@ -77,29 +77,30 @@ class DocsAccess
 
     public function canOpenRestrictedIn(System $system): bool
     {
-        return $this->canOpenManual($system) && ($this->isStaff() || ($this->grants[$system->id] ?? false));
+        return $this->canOpenManual($system) && ($this->isStaff() || ($this->grants[$system->id]['restricted'] ?? false));
     }
 
     /**
-     * IDs of sections that are restricted, themselves or through a restricted chapter above them.
+     * IDs of sections that need more than access to the manual: restricted chapters and chapters
+     * meant for particular audiences, each with everything under it. Never in the sitemap.
      *
      * @param Collection<int, ManualSection> $outline published sections in order (with sort_key)
      * @return array<int, true>
      */
-    public function restrictedSectionIds(Collection $outline): array
+    public function protectedSectionIds(Collection $outline): array
     {
-        $restrictedKeys = $outline->filter(fn (ManualSection $s) => $s->isRestricted())->pluck('sort_key')->all();
-
-        return $outline
-            ->filter(fn (ManualSection $s) => collect($restrictedKeys)->contains(
-                fn ($key) => $s->sort_key === $key || str_starts_with((string) $s->sort_key, $key . '.')
-            ))
-            ->mapWithKeys(fn (ManualSection $s) => [$s->id => true])
-            ->all();
+        return $this->withDescendants($outline, $outline->filter(
+            fn (ManualSection $s) => $s->isRestricted() || $this->audienceIds($s) !== []
+        ));
     }
 
     /**
      * Sections in this outline the visitor may not read (empty if they can read everything).
+     *
+     * A section is locked when it, or a chapter above it, is
+     * - restricted, and the visitor's codes for this manual don't include restricted chapters, or
+     * - meant for audiences, and the visitor's codes for this manual open none of them.
+     * Staff of the organisation can read everything.
      *
      * @return array<int, true>
      */
@@ -109,7 +110,57 @@ class DocsAccess
             return $outline->mapWithKeys(fn (ManualSection $s) => [$s->id => true])->all();
         }
 
-        return $this->canOpenRestrictedIn($system) ? [] : $this->restrictedSectionIds($outline);
+        if ($this->isStaff()) {
+            return [];
+        }
+
+        $grant = $this->grants[$system->id] ?? ['restricted' => false, 'audiences' => []];
+
+        return $this->withDescendants($outline, $outline->filter(function (ManualSection $s) use ($grant) {
+            $audiences = $this->audienceIds($s);
+
+            return ($s->isRestricted() && !$grant['restricted'])
+                || ($audiences !== [] && array_intersect($audiences, $grant['audiences']) === []);
+        }));
+    }
+
+    /**
+     * Audiences the visitor's codes open in this manual (staff: all of them).
+     *
+     * @return array<int, int>
+     */
+    public function audienceIdsFor(System $system): array
+    {
+        return $this->grants[$system->id]['audiences'] ?? [];
+    }
+
+    /** @return array<int, int> */
+    private function audienceIds(ManualSection $section): array
+    {
+        return $section->relationLoaded('audiences')
+            ? $section->audiences->pluck('id')->map(fn ($id) => (int) $id)->all()
+            : $section->audiences()->pluck('docs_audiences.id')->map(fn ($id) => (int) $id)->all();
+    }
+
+    /**
+     * The given sections plus everything under them, as an id map.
+     *
+     * @return array<int, true>
+     */
+    private function withDescendants(Collection $outline, Collection $roots): array
+    {
+        $keys = $roots->pluck('sort_key')->all();
+
+        if ($keys === []) {
+            return [];
+        }
+
+        return $outline
+            ->filter(fn (ManualSection $s) => collect($keys)->contains(
+                fn ($key) => $s->sort_key === $key || str_starts_with((string) $s->sort_key, $key . '.')
+            ))
+            ->mapWithKeys(fn (ManualSection $s) => [$s->id => true])
+            ->all();
     }
 
     /**
@@ -146,7 +197,7 @@ class DocsAccess
         $ids = $this->storedIds();
 
         $this->codes = empty($ids) ? new \Illuminate\Database\Eloquent\Collection() : DocsAccessCode::query()
-            ->with('grants')
+            ->with('grants.audiences')
             ->where('organisation_id', $this->context->organisation->id)
             ->whereIn('id', $ids)
             ->get()
@@ -158,10 +209,15 @@ class DocsAccess
             $this->storeIds($this->codes->pluck('id')->all());
         }
 
+        // Several codes for the same manual add up.
         $this->grants = [];
         foreach ($this->codes as $code) {
             foreach ($code->grants as $grant) {
-                $this->grants[$grant->system_id] = ($this->grants[$grant->system_id] ?? false) || $grant->include_restricted;
+                $current = $this->grants[$grant->system_id] ?? ['restricted' => false, 'audiences' => []];
+                $this->grants[$grant->system_id] = [
+                    'restricted' => $current['restricted'] || $grant->include_restricted,
+                    'audiences' => array_values(array_unique([...$current['audiences'], ...$grant->audiences->pluck('id')->map(fn ($id) => (int) $id)->all()])),
+                ];
             }
         }
     }

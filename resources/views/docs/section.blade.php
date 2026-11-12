@@ -35,12 +35,6 @@
             <nav class="docs-tree p-3 overflow-y-auto lg:max-h-[calc(100vh-17rem)]" aria-label="Manual contents">
                 @include('docs.partials.tree', ['nodes' => $tree, 'currentId' => $section->id, 'ancestorIds' => $ancestorIds, 'depth' => 0])
             </nav>
-            <div class="p-3 border-t border-gray-100">
-                <a href="{{ $docs->system($system, 'pdf') }}" class="flex items-center gap-2 text-sm docs-accent font-semibold hover:underline">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M6 20h12a2 2 0 002-2V8l-6-6H6a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                    Download PDF
-                </a>
-            </div>
         </div>
     </aside>
 
@@ -59,6 +53,13 @@
                 @if ($section->isRestricted())
                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold">@include('docs.partials.lock', ['class' => 'w-3 h-3']) Restricted</span>
                 @endif
+                @if ($audiences->isNotEmpty())
+                    <span class="inline-flex items-center gap-1">For:
+                        @foreach ($audiences as $audience)
+                            <span class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 font-semibold">{{ $audience->name }}</span>
+                        @endforeach
+                    </span>
+                @endif
                 <button type="button" data-copy-link="{{ $docs->section($system, $section) }}" class="ml-auto inline-flex items-center gap-1 hover:text-gray-800 docs-no-print">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
                     <span data-label>Copy link</span>
@@ -68,7 +69,7 @@
 
         <div class="px-6 md:px-10 py-6">
             @if ($isLocked)
-                @include('docs.partials.locked-panel', ['system' => $system])
+                @include('docs.partials.locked-panel', ['system' => $system, 'audiences' => $audiences])
             @elseif ($pdf)
                 <div class="space-y-3">
                     <p class="text-sm text-gray-600">

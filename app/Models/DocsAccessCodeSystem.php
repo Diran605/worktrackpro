@@ -21,6 +21,14 @@ class DocsAccessCodeSystem extends Model
         return $this->belongsTo(DocsAccessCode::class, 'access_code_id');
     }
 
+    /** Audiences this code opens in this product (chapters meant for them). */
+    public function audiences(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(DocsAudience::class, 'docs_access_code_audiences', 'grant_id', 'audience_id')
+            ->orderBy('position')
+            ->orderBy('name');
+    }
+
     public function system(): BelongsTo
     {
         return $this->belongsTo(System::class);

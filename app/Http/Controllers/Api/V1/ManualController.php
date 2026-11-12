@@ -45,6 +45,7 @@ class ManualController extends Controller
                 'kind' => $node['section']->kind,
                 'depth' => $node['section']->depth,
                 'restricted' => $node['section']->isRestricted(),
+                'audiences' => $node['section']->audiences->pluck('name')->values(),
                 'read' => isset($readIds[$node['section']->id]),
                 'children' => $mapTree($node['children']),
             ], $nodes);

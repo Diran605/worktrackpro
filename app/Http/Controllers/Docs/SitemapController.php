@@ -24,7 +24,7 @@ class SitemapController extends DocsController
             $urls[] = ['loc' => $this->context()->system($system), 'lastmod' => $system->latestRelease?->published_at];
 
             $outline = $this->outline($system);
-            $restricted = $this->access()->restrictedSectionIds($outline);
+            $restricted = $this->access()->protectedSectionIds($outline);
 
             foreach ($outline as $section) {
                 if (!isset($restricted[$section->id])) {

@@ -39,12 +39,15 @@
                         @endif
                     </div>
                     <ul class="mt-2 flex flex-wrap gap-2">
-                        @foreach ($code->systems as $codeSystem)
-                            @if ($codeSystem->isInLibrary())
+                        @foreach ($code->grants as $grant)
+                            @if ($grant->system?->isInLibrary())
                                 <li>
-                                    <a href="{{ $docs->system($codeSystem) }}" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-100 text-sm text-gray-800 hover:bg-gray-200">
-                                        {{ $codeSystem->name }}
-                                        @if ($codeSystem->pivot->include_restricted)
+                                    <a href="{{ $docs->system($grant->system) }}" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-100 text-sm text-gray-800 hover:bg-gray-200">
+                                        {{ $grant->system->name }}
+                                        @if ($grant->audiences->isNotEmpty())
+                                            <span class="text-xs text-gray-500">· {{ $grant->audiences->pluck('name')->join(', ') }}</span>
+                                        @endif
+                                        @if ($grant->include_restricted)
                                             <span class="text-xs text-gray-500">(incl. restricted chapters)</span>
                                         @endif
                                     </a>
