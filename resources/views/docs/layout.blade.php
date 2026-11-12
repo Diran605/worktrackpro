@@ -108,7 +108,7 @@
             @if ($docsAccess->isStaff())
                 <a href="{{ url('/staff') }}" class="px-3 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50">Staff: {{ $docsAccess->staffUser()->name }}</a>
             @else
-                <a href="{{ url('/staff/login') }}" class="px-3 py-2 rounded docs-accent-bg text-white font-semibold hover:opacity-90">Staff sign in</a>
+                <a href="{{ $staffSignIn }}" class="px-3 py-2 rounded docs-accent-bg text-white font-semibold hover:opacity-90">Staff sign in</a>
             @endif
         </div>
 
@@ -134,7 +134,7 @@
         <div class="flex gap-2 pt-2 border-t border-gray-100">
             <a href="{{ $docs->url('docs/access') }}" class="text-sm text-gray-700 underline">Enter access code</a>
             <span class="text-gray-300">·</span>
-            <a href="{{ url('/staff/login') }}" class="text-sm text-gray-700 underline">Staff sign in</a>
+            <a href="{{ $staffSignIn }}" class="text-sm text-gray-700 underline">Staff sign in</a>
         </div>
     </div>
 </header>
@@ -178,7 +178,7 @@
             <div class="text-white font-semibold mb-2">Access</div>
             <ul class="space-y-1">
                 <li><a href="{{ $docs->url('docs/access') }}" class="hover:text-white hover:underline">Enter an access code</a></li>
-                <li><a href="{{ url('/staff/login') }}" class="hover:text-white hover:underline">Staff sign in</a></li>
+                <li><a href="{{ $staffSignIn }}" class="hover:text-white hover:underline">Staff sign in</a></li>
             </ul>
         </div>
     </div>

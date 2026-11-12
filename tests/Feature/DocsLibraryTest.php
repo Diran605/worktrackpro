@@ -264,7 +264,7 @@ class DocsLibraryTest extends TestCase
             ->assertSessionHas('docs_request_sent');
 
         $this->assertSame(1, DocsAccessRequest::count());
-        $this->assertTrue(MessageRecipient::where('recipient_id', $this->owner->id)->exists());
+        $this->assertTrue(MessageRecipient::query()->where('recipient_id', $this->owner->id)->exists());
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -370,6 +370,15 @@ class DocsLibraryTest extends TestCase
     // ---------------------------------------------------------------------------------------------
     // Staff handoff
     // ---------------------------------------------------------------------------------------------
+
+    public function test_staff_sign_in_goes_through_the_portal_and_back_to_the_page(): void
+    {
+        $page = "/docs/payments-gateway/{$this->intro->slug}";
+
+        $this->get($page)->assertOk()
+            ->assertSee(url('/staff/library') . '?return=' . urlencode($page), false);
+        $this->get('/staff/library?return=' . urlencode($page))->assertOk(); // the portal page
+    }
 
     public function test_staff_portal_can_open_a_page_in_the_library_signed_in(): void
     {

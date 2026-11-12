@@ -17,7 +17,7 @@
         <!-- Error Alert -->
         <div v-if="authStore.error" class="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
             <div class="flex">
-                <div class="flex-shrink-0">
+                <div class="shrink-0">
                     <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
                     </svg>
@@ -63,9 +63,11 @@
 
 <script setup>
 import { reactive } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
+import { safeRedirect } from '../../router';
 
+const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 
@@ -77,7 +79,7 @@ const form = reactive({
 const handleLogin = async () => {
     const success = await authStore.login(form.email, form.password);
     if (success) {
-        router.push({ name: 'Dashboard' });
+        router.push(safeRedirect(route.query.redirect) || { name: 'Dashboard' });
     }
 };
 </script>

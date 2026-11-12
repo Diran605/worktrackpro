@@ -111,7 +111,7 @@
             <div class="flex gap-3 items-start bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900 docs-no-print">
                 @include('docs.partials.lock', ['class' => 'w-5 h-5 mt-0.5'])
                 <div>
-                    Some chapters of this manual are restricted. Staff can <a href="{{ url('/staff/login') }}" class="underline font-semibold">sign in</a>;
+                    Some chapters of this manual are restricted. Staff can <a href="{{ $staffSignIn }}" class="underline font-semibold">sign in</a>;
                     other readers need an <a href="{{ $docs->url('docs/access') }}?return={{ urlencode(request()->getRequestUri()) }}" class="underline font-semibold">access code</a>.
                 </div>
             </div>

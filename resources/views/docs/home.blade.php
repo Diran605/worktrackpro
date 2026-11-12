@@ -48,7 +48,7 @@
             <h2 class="text-xl font-semibold text-gray-900">No manuals are published yet</h2>
             <p class="mt-2 text-gray-600">When a system's manual is added to the library it will appear here.</p>
             @unless ($docsAccess->isStaff())
-                <p class="mt-4 text-sm text-gray-500">Staff can <a href="{{ url('/staff/login') }}" class="docs-accent underline">sign in</a> to read internal manuals in the staff portal.</p>
+                <p class="mt-4 text-sm text-gray-500">Staff can <a href="{{ $staffSignIn }}" class="docs-accent underline">sign in</a> to read internal manuals in the staff portal.</p>
             @endunless
         </section>
     @else

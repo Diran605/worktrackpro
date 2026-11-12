@@ -53,6 +53,8 @@ class DocsNavigationComposer
             'docsAccess' => app(DocsAccess::class),
             'docsAccent' => preg_match('/^#[0-9a-fA-F]{3,8}$/', $primary) ? $primary : '#0d9488',
             'docsLogo' => $organisation->logo ? asset('storage/' . $organisation->logo) : null,
+            // Through the portal and back to this page, signed in to the library as well.
+            'staffSignIn' => url('/staff/library') . '?' . http_build_query(['return' => request()->getRequestUri()]),
         ];
     }
 }

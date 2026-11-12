@@ -23,7 +23,7 @@
                 <button type="submit" class="px-4 py-2 rounded docs-accent-bg text-white font-semibold hover:opacity-90">Unlock</button>
             </form>
             @unless ($docsAccess->isStaff())
-                <p class="mt-4 text-sm text-gray-600">Staff member? <a href="{{ url('/staff/login') }}" class="docs-accent underline font-semibold">Sign in</a></p>
+                <p class="mt-4 text-sm text-gray-600">Staff member? <a href="{{ $staffSignIn }}" class="docs-accent underline font-semibold">Sign in</a></p>
             @endunless
         </div>
 

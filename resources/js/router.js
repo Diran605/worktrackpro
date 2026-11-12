@@ -10,6 +10,12 @@ const routes = [
         meta: { guestOnly: true }
     },
     {
+        // "Staff sign in" from the documentation library (?return=<library path>)
+        path: '/library',
+        name: 'LibrarySignIn',
+        component: () => import('./views/auth/LibrarySignInView.vue'),
+    },
+    {
         path: '/',
         name: 'Dashboard',
         component: () => import('./views/DashboardView.vue'),
@@ -111,12 +117,13 @@ router.beforeEach(async (to, from, next) => {
     
     // Check if route requires auth but user isn't logged in
     if (to.meta.requiresAuth && !isAuthenticated) {
-        next({ name: 'Login' });
-    } 
+        // Come back to the requested page after signing in.
+        next({ name: 'Login', query: to.fullPath !== '/' ? { redirect: to.fullPath } : {} });
+    }
     // Check if route is guest-only (like login) but user IS authenticated
     else if (to.meta.guestOnly && isAuthenticated) {
-        next({ name: 'Dashboard' });
-    } 
+        next(safeRedirect(to.query.redirect) || { name: 'Dashboard' });
+    }
     else {
         // Attendance gate: block plans/logs until clocked in
         if (isAuthenticated && (to.name === 'DailyPlans' || to.name === 'ActivityLogs')) {
@@ -131,5 +138,11 @@ router.beforeEach(async (to, from, next) => {
         next();
     }
 });
+
+/** A ?redirect= value that stays inside the portal, or null. */
+export function safeRedirect(value) {
+    const path = typeof value === 'string' ? value : '';
+    return path.startsWith('/') && !path.startsWith('//') ? path : null;
+}
 
 export default router;

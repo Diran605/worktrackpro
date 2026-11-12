@@ -23,7 +23,7 @@
         </form>
         @error('code')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
         @unless ($docsAccess->isStaff())
-            <p class="mt-4 text-sm text-gray-600">Staff do not need a code: <a href="{{ url('/staff/login') }}" class="docs-accent underline font-semibold">sign in</a> instead.</p>
+            <p class="mt-4 text-sm text-gray-600">Staff do not need a code: <a href="{{ $staffSignIn }}" class="docs-accent underline font-semibold">sign in</a> instead.</p>
         @endunless
     </div>
 
