@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -12,6 +13,8 @@ use Illuminate\Support\Str;
  */
 class SystemCategory extends Model
 {
+    use Auditable;
+
     protected $fillable = ['organisation_id', 'name', 'slug', 'description', 'icon', 'position'];
 
     protected static function booted(): void

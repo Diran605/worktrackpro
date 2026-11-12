@@ -5,8 +5,18 @@ namespace App\Traits;
 use App\Models\AuditLog;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Records create / update / delete of a model in the audit log.
+ *
+ * - Updates store only the fields that changed (before and after), not the whole row.
+ * - Hidden attributes (passwords, access codes…) are stored as "********".
+ * - Models without an organisation_id can define auditOrganisationId().
+ */
 trait Auditable
 {
+    /** Changes to these alone are not worth an audit entry. */
+    protected static array $auditIgnored = ['updated_at', 'created_at', 'remember_token'];
+
     public static function bootAuditable()
     {
         static::created(function (Model $model) {
@@ -14,7 +24,13 @@ trait Auditable
         });
 
         static::updated(function (Model $model) {
-            $model->audit('updated', $model->getOriginal(), $model->getChanges());
+            $changes = array_diff_key($model->getChanges(), array_flip(static::$auditIgnored));
+
+            if ($changes === []) {
+                return;
+            }
+
+            $model->audit('updated', array_intersect_key($model->getOriginal(), $changes), $changes);
         });
 
         static::deleted(function (Model $model) {
@@ -24,39 +40,31 @@ trait Auditable
 
     protected function audit(string $action, ?array $oldValues, ?array $newValues)
     {
-        // Don't audit if running from console/seeding without user context
-        // though we allow it if we want system logs. Let's capture if there is auth context.
-        
-        $userId = auth()->id();
-        $ip = request()?->ip();
-        $userAgent = request()?->userAgent();
-        
-        // Extract organisation_id. If model has it, grab it. If not, maybe grab from user.
-        $organisationId = $this->organisation_id ?? auth()->user()?->organisation_id;
+        $organisationId = method_exists($this, 'auditOrganisationId')
+            ? $this->auditOrganisationId()
+            : ($this->organisation_id ?? auth()->user()?->organisation_id);
 
         AuditLog::create([
-            'user_id' => $userId,
+            'user_id' => auth()->id(),
             'organisation_id' => $organisationId,
             'action' => $action,
             'auditable_type' => get_class($this),
             'auditable_id' => $this->getKey(),
             'old_values' => $oldValues ? $this->filterAuditValues($oldValues) : null,
             'new_values' => $newValues ? $this->filterAuditValues($newValues) : null,
-            'ip_address' => $ip,
-            'user_agent' => substr($userAgent, 0, 500),
+            'ip_address' => request()?->ip(),
+            'user_agent' => substr((string) request()?->userAgent(), 0, 500),
         ]);
     }
 
     protected function filterAuditValues(array $values): array
     {
-        $hidden = $this->getHidden();
-        
-        foreach ($hidden as $field) {
+        foreach ($this->getHidden() as $field) {
             if (array_key_exists($field, $values)) {
                 $values[$field] = '********';
             }
         }
-        
+
         return $values;
     }
 }

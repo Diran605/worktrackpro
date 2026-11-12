@@ -136,4 +136,10 @@ class ManualSection extends Model
 
         return $ids;
     }
+
+    /** Audit entries belong to the system's organisation. */
+    public function auditOrganisationId(): ?int
+    {
+        return System::withTrashed()->whereKey($this->system_id)->value('organisation_id');
+    }
 }
