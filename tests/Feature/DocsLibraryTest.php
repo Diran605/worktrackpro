@@ -117,6 +117,20 @@ class DocsLibraryTest extends TestCase
             ->assertDontSee('Hidden Tool');
     }
 
+    public function test_recently_updated_shows_only_the_latest_version_of_each_product(): void
+    {
+        $this->publish('Disputes', '<p>x</p>');
+        app(ManualReleaseService::class)->publish($this->system->fresh(), $this->owner, false, 'Added disputes');
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('Browse by product')
+            ->assertSee('Added disputes')
+            ->assertDontSee('First public version')
+            ->assertDontSee('hover:opacity-90">Staff sign in', false) // no header button…
+            ->assertSee(url('/staff/library'), false);                 // …only the footer link
+    }
+
     public function test_other_organisations_are_served_under_org_slug_and_custom_domains(): void
     {
         $other = Organisation::factory()->create(['slug' => 'globex', 'name' => 'Globex', 'docs_domain' => 'docs.globex.test']);

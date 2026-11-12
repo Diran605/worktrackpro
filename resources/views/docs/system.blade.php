@@ -95,7 +95,7 @@
 
         @if ($related->isNotEmpty())
             <div class="bg-white rounded-lg border border-gray-200 p-4">
-                <div class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Related systems</div>
+                <div class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Related products</div>
                 <ul class="space-y-1 text-sm">
                     @foreach ($related as $other)
                         <li><a href="{{ $docs->system($other) }}" class="text-gray-700 hover:underline">{{ $other->name }}</a></li>

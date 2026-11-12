@@ -34,14 +34,14 @@
         </a>
 
         <nav class="hidden lg:flex items-center gap-1 text-sm font-medium text-gray-700" aria-label="Library">
-            {{-- Systems mega-menu --}}
+            {{-- Products mega-menu --}}
             <details class="docs-menu relative">
-                <summary class="px-3 py-2 rounded hover:bg-gray-100 flex items-center gap-1">Systems
+                <summary class="px-3 py-2 rounded hover:bg-gray-100 flex items-center gap-1">Products
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                 </summary>
                 <div class="absolute left-0 mt-2 w-[min(56rem,90vw)] bg-white border border-gray-200 rounded-lg shadow-xl p-6">
                     @if ($navGroups->isEmpty())
-                        <p class="text-sm text-gray-500">No manuals are published yet.</p>
+                        <p class="text-sm text-gray-500">No products are published yet.</p>
                     @else
                         <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
                             @foreach ($navGroups as $group)
@@ -58,18 +58,18 @@
                                 </div>
                             @endforeach
                         </div>
-                        <div class="mt-6 pt-4 border-t border-gray-100"><a href="{{ $docs->home() }}#all-systems" class="text-sm font-semibold docs-accent">All systems &raquo;</a></div>
+                        <div class="mt-6 pt-4 border-t border-gray-100"><a href="{{ $docs->home() }}#all-systems" class="text-sm font-semibold docs-accent">All products &raquo;</a></div>
                     @endif
                 </div>
             </details>
 
-            {{-- Systems A–Z --}}
+            {{-- Products A–Z --}}
             <details class="docs-menu relative">
-                <summary class="px-3 py-2 rounded hover:bg-gray-100 flex items-center gap-1">Systems A–Z
+                <summary class="px-3 py-2 rounded hover:bg-gray-100 flex items-center gap-1">Products A–Z
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                 </summary>
                 <div class="absolute left-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl p-4">
-                    <input type="search" data-az-filter="#docs-az-list" placeholder="Filter systems" aria-label="Filter systems"
+                    <input type="search" data-az-filter="#docs-az-list" placeholder="Filter products" aria-label="Filter products"
                            class="w-full mb-3 px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-(--docs-accent)">
                     <ul id="docs-az-list" class="max-h-80 overflow-y-auto">
                         @php $letter = null; @endphp
@@ -83,7 +83,7 @@
                                 <a href="{{ $docs->system($navSystem) }}" class="block px-2 py-1 rounded text-sm text-gray-700 hover:bg-gray-100">{{ $navSystem->name }}</a>
                             </li>
                         @empty
-                            <li class="text-sm text-gray-500">No manuals are published yet.</li>
+                            <li class="text-sm text-gray-500">No products are published yet.</li>
                         @endforelse
                     </ul>
                 </div>
@@ -105,10 +105,9 @@
             <a href="{{ $docs->url('docs/access') }}" class="px-3 py-2 rounded hover:bg-gray-100 text-gray-700">
                 {{ $docsAccess->hasCodes() ? 'Access codes (' . $docsAccess->codes()->count() . ')' : 'Enter access code' }}
             </a>
+            {{-- No staff sign-in button here: staff use the footer link or the one on locked pages. --}}
             @if ($docsAccess->isStaff())
                 <a href="{{ url('/staff') }}" class="px-3 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50">Staff: {{ $docsAccess->staffUser()->name }}</a>
-            @else
-                <a href="{{ $staffSignIn }}" class="px-3 py-2 rounded docs-accent-bg text-white font-semibold hover:opacity-90">Staff sign in</a>
             @endif
         </div>
 
@@ -131,10 +130,8 @@
                 @endforeach
             </div>
         @endforeach
-        <div class="flex gap-2 pt-2 border-t border-gray-100">
+        <div class="pt-2 border-t border-gray-100">
             <a href="{{ $docs->url('docs/access') }}" class="text-sm text-gray-700 underline">Enter access code</a>
-            <span class="text-gray-300">·</span>
-            <a href="{{ $staffSignIn }}" class="text-sm text-gray-700 underline">Staff sign in</a>
         </div>
     </div>
 </header>

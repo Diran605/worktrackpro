@@ -30,8 +30,12 @@ class HomeController extends DocsController
 
         $uncategorised = $systems->whereNull('category_id')->values();
 
+        // One card per product: its latest version.
         $recent = ManualRelease::query()
-            ->whereIn('system_id', $systems->pluck('id'))
+            ->whereIn('id', fn ($q) => $q->selectRaw('max(id)')
+                ->from('manual_releases')
+                ->whereIn('system_id', $systems->pluck('id'))
+                ->groupBy('system_id'))
             ->with('system')
             ->orderByDesc('published_at')
             ->limit(6)

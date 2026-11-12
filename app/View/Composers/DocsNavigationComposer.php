@@ -42,7 +42,7 @@ class DocsNavigationComposer
 
         $other = $systems->whereNull('category_id')->values();
         if ($other->isNotEmpty()) {
-            $groups->push(['name' => $groups->isEmpty() ? 'Systems' : 'Other systems', 'slug' => 'other', 'systems' => $other]);
+            $groups->push(['name' => $groups->isEmpty() ? 'Products' : 'Other products', 'slug' => 'other', 'systems' => $other]);
         }
 
         $primary = (string) $organisation->primary_color;
