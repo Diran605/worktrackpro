@@ -10,7 +10,7 @@ Turns company systems/projects from "knowledge in people's heads" into structure
 | 1 — System registry | ✅ Done (2026-11-11) |
 | 2 — Manuals | ✅ Done (2026-11-11) |
 | 3 — Manual generation (PDF) | ✅ Done (2026-11-13) |
-| 3B — Documentation Library (public docs site) | Planned (2026-11-12) |
+| 3B — Documentation Library (public docs site) | Built (2026-11-12), awaiting merge |
 | 4 — Competency & readiness | Not started |
 | 5 — Tickets & FAQ | Not started |
 | 6 — Insights | Not started |

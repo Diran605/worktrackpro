@@ -43,6 +43,7 @@ class AdminPanelProvider extends PanelProvider
                 'Communication',
                 'Letters',
                 'Knowledge',
+                'Documentation Library',
                 'Security',
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')

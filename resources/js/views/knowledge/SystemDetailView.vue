@@ -111,10 +111,34 @@
                         </div>
                     </div>
 
+                    <div v-if="manual.library" class="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+                        <h2 class="font-bold text-gray-900 mb-1">Documentation library</h2>
+                        <p class="text-sm text-gray-600">
+                            <span class="inline-block px-2 py-0.5 rounded-full text-xs font-semibold"
+                                  :class="{
+                                      'bg-green-50 text-green-700': manual.library.visibility === 'public',
+                                      'bg-amber-50 text-amber-700': manual.library.visibility === 'restricted',
+                                      'bg-gray-100 text-gray-600': manual.library.visibility === 'hidden',
+                                  }">{{ manual.library.visibility_label }}</span>
+                        </p>
+                        <p class="text-xs text-gray-500 mt-2">
+                            <template v-if="manual.library.visibility === 'public'">Anyone can read this manual in the library. Chapters marked 🔒 need staff sign-in or an access code.</template>
+                            <template v-else-if="manual.library.visibility === 'restricted'">Listed in the library, but only staff and readers with an access code can open it.</template>
+                            <template v-else>Only staff can read this manual, here in the portal.</template>
+                        </p>
+                        <p v-if="manual.unreleased_changes" class="text-xs text-amber-700 mt-2">
+                            {{ manual.unreleased_changes }} approved {{ manual.unreleased_changes === 1 ? 'change is' : 'changes are' }} live but not in a version yet. Publish a version from the admin panel (Knowledge › Systems › Publish version).
+                        </p>
+                        <button v-if="manual.library.path" @click="openInLibrary(manual.library.path)"
+                                class="mt-3 w-full px-4 py-2 rounded-xl text-sm font-semibold bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
+                            🌐 Open in library
+                        </button>
+                    </div>
+
                     <div v-if="manual.can.contribute" class="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
                         <h2 class="font-bold text-gray-900 mb-1">Contribute</h2>
                         <p class="text-xs text-gray-500 mb-3">
-                            {{ manual.can.approve ? 'You own this system, so your changes publish straight away.' : 'Changes go to the system owner for approval before they are published.' }}
+                            {{ manual.can.approve ? 'You own this system, so your changes go live straight away. Group them into a version when you are ready.' : 'Changes go to the system owner for approval before they are published.' }}
                         </p>
                         <div class="flex flex-col gap-2">
                             <router-link :to="{ name: 'ManualEditor', params: { slug } }"
@@ -141,6 +165,7 @@ import { useRoute, useRouter } from 'vue-router';
 import api from '../../lib/axios';
 import ManualTree from '../../components/knowledge/ManualTree.vue';
 import ExportManualDialog from '../../components/knowledge/ExportManualDialog.vue';
+import { openInLibrary } from '../../lib/docsLink';
 
 const route = useRoute();
 const router = useRouter();

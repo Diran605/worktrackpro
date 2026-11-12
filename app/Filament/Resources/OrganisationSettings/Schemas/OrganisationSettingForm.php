@@ -4,6 +4,9 @@ namespace App\Filament\Resources\OrganisationSettings\Schemas;
 
 use App\Support\LocalTime;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Textarea;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
@@ -100,6 +103,61 @@ class OrganisationSettingForm
                             ->columns(2)
                             ->bulkToggleable()
                             ->helperText('Tick the kinds of files people may attach. If nothing is ticked, any file type is accepted, which is not recommended.'),
+                    ]),
+
+                // Saved on the organisation itself (organisations.docs_*).
+                Section::make('Documentation library')
+                    ->description('How your public documentation library looks. Choose which manuals appear in it under Knowledge > Systems.')
+                    ->relationship('organisation')
+                    ->collapsible()
+                    ->schema([
+                        TextEntry::make('docs_address')
+                            ->label('Library address')
+                            ->state(fn ($record) => $record ? \App\Support\DocsContext::for($record)->home() : null)
+                            ->url(fn ($state) => $state, shouldOpenInNewTab: true)
+                            ->helperText('Share this link with clients and staff. A super admin can give the library its own web address (for example docs.yourcompany.com) under Organisations.'),
+                        TextInput::make('docs_title')
+                            ->label('Library title')
+                            ->maxLength(120)
+                            ->placeholder(fn ($record) => $record ? $record->name . ' Documentation' : null)
+                            ->helperText('The big heading on the library home page and in browser tabs. Leave empty to use "<organisation name> Documentation".'),
+                        TextInput::make('docs_tagline')
+                            ->label('Tagline')
+                            ->maxLength(255)
+                            ->placeholder('Guides and manuals for our systems')
+                            ->helperText('One line under the title, also used as the description search engines show.'),
+                        Repeater::make('docs_banners')
+                            ->label('Home page announcements')
+                            ->helperText('Up to three cards shown under the search box, e.g. "New billing manual" or "Planned maintenance on Saturday".')
+                            ->maxItems(3)
+                            ->defaultItems(0)
+                            ->addActionLabel('Add announcement')
+                            ->collapsible()
+                            ->itemLabel(fn (array $state) => $state['title'] ?? null)
+                            ->columns(2)
+                            ->schema([
+                                TextInput::make('title')->required()->maxLength(80),
+                                TextInput::make('link_label')->label('Link text')->maxLength(40)->placeholder('Learn more'),
+                                Textarea::make('text')->rows(2)->maxLength(240)->columnSpanFull(),
+                                TextInput::make('url')
+                                    ->label('Link')
+                                    ->maxLength(500)
+                                    ->regex('#^(https?://|/)#i')
+                                    ->validationMessages(['regex' => 'Use a full web address (https://…) or a path on this site starting with /.'])
+                                    ->placeholder('https://… or /docs/billing')
+                                    ->columnSpanFull(),
+                            ]),
+                        Repeater::make('docs_footer_links')
+                            ->label('Footer links')
+                            ->helperText('Links at the bottom of every library page, e.g. your website or support portal.')
+                            ->maxItems(8)
+                            ->defaultItems(0)
+                            ->addActionLabel('Add link')
+                            ->columns(2)
+                            ->schema([
+                                TextInput::make('label')->required()->maxLength(60),
+                                TextInput::make('url')->label('Web address')->required()->url()->maxLength(500),
+                            ]),
                     ]),
             ]);
     }

@@ -145,7 +145,7 @@ class DocsAccess
     {
         $ids = $this->storedIds();
 
-        $this->codes = empty($ids) ? collect() : DocsAccessCode::query()
+        $this->codes = empty($ids) ? new \Illuminate\Database\Eloquent\Collection() : DocsAccessCode::query()
             ->with('grants')
             ->where('organisation_id', $this->context->organisation->id)
             ->whereIn('id', $ids)

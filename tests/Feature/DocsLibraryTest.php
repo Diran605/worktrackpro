@@ -204,6 +204,15 @@ class DocsLibraryTest extends TestCase
 
         $this->get($return)->assertOk()->assertSee('Secret admin settings.');
         $this->assertSame(1, DocsAccessCode::first()->use_count);
+
+        $this->get('/docs/access')->assertOk()->assertSee('Active in this browser')->assertSee('Client A');
+        $this->post('/docs/access/forget')->assertRedirect(url('/'));
+        $this->get($return)->assertForbidden();
+    }
+
+    public function test_access_page_renders_without_codes(): void
+    {
+        $this->get('/docs/access')->assertOk()->assertSee('Unlock')->assertDontSee('Active in this browser');
     }
 
     public function test_code_without_restricted_chapters_opens_the_manual_only(): void
@@ -333,6 +342,29 @@ class DocsLibraryTest extends TestCase
         $export = \App\Models\ManualExport::latest('id')->first();
         $this->assertNotNull($export);
         $this->assertEqualsCanonicalizing([$this->admin->id, $this->adminChild->id], $export->options['exclude'] ?? []);
+    }
+
+    public function test_portal_manual_shows_library_details(): void
+    {
+        Sanctum::actingAs($this->owner);
+
+        $this->getJson("/api/v1/systems/{$this->system->slug}/manual")
+            ->assertOk()
+            ->assertJsonPath('data.library.visibility', System::LIBRARY_PUBLIC)
+            ->assertJsonPath('data.library.path', '/docs/payments-gateway')
+            ->assertJsonPath('data.unreleased_changes', 0)
+            ->assertJsonPath('data.tree.1.restricted', true);
+
+        $this->getJson("/api/v1/systems/{$this->system->slug}/manual/sections/{$this->intro->id}")
+            ->assertJsonPath('data.library_path', "/docs/payments-gateway/{$this->intro->slug}");
+
+        // Another organisation's library is under /org/{slug}.
+        $other = $this->makeUser('worker');
+        $theirs = System::create(['organisation_id' => $other->organisation_id, 'name' => 'Their CRM', 'library_visibility' => System::LIBRARY_PUBLIC]);
+        Sanctum::actingAs($other);
+        $this->getJson("/api/v1/systems/{$theirs->slug}/manual")
+            ->assertJsonPath('data.library.path', "/org/{$other->organisation->slug}/docs/their-crm")
+            ->assertJsonPath('data.unreleased_changes', null);
     }
 
     // ---------------------------------------------------------------------------------------------
