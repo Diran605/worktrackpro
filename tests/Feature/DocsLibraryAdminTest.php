@@ -111,6 +111,56 @@ class DocsLibraryAdminTest extends TestCase
         Livewire::test(ListSystems::class)->assertTableActionHidden('publishVersion', $this->system);
     }
 
+    public function test_approving_with_publish_now_releases_a_minor_version(): void
+    {
+        $this->publishedSection('Leads');
+        app(\App\Services\ManualReleaseService::class)->publish($this->system->fresh(), $this->admin, false, 'First');
+
+        $worker = $this->makeUser('worker', $this->admin->organisation);
+        $change = ManualChangeRequest::create([
+            'system_id' => $this->system->id,
+            'type' => ManualChangeRequest::TYPE_CREATE,
+            'kind' => ManualSection::KIND_WRITTEN,
+            'title' => 'Phone numbers',
+            'body' => '<p>Call 123</p>',
+            'status' => ManualChangeRequest::STATUS_DRAFT,
+            'author_id' => $worker->id,
+        ]);
+        app(ManualService::class)->submit($change, $worker);
+        $this->actingAs($this->admin);
+
+        Livewire::test(\App\Filament\Resources\ManualChanges\Pages\ViewManualChangeRequest::class, ['record' => $change->getRouteKey()])
+            ->callAction('approve', data: ['publish_now' => true, 'release_summary' => 'Corrected the phone number'])
+            ->assertHasNoActionErrors();
+
+        $release = ManualRelease::latest('id')->firstOrFail();
+        $this->assertSame('0.2', $release->version);
+        $this->assertSame('Corrected the phone number', $release->summary);
+        $this->assertSame(0, $this->system->fresh()->unreleasedRevisions()->count());
+    }
+
+    public function test_publish_now_needs_a_summary(): void
+    {
+        $worker = $this->makeUser('worker', $this->admin->organisation);
+        $change = ManualChangeRequest::create([
+            'system_id' => $this->system->id,
+            'type' => ManualChangeRequest::TYPE_CREATE,
+            'kind' => ManualSection::KIND_WRITTEN,
+            'title' => 'Leads',
+            'body' => '<p>x</p>',
+            'status' => ManualChangeRequest::STATUS_DRAFT,
+            'author_id' => $worker->id,
+        ]);
+        app(ManualService::class)->submit($change, $worker);
+        $this->actingAs($this->admin);
+
+        Livewire::test(\App\Filament\Resources\ManualChanges\Pages\ViewManualChangeRequest::class, ['record' => $change->getRouteKey()])
+            ->callAction('approve', data: ['publish_now' => true, 'release_summary' => ''])
+            ->assertHasActionErrors(['release_summary' => 'required']);
+
+        $this->assertSame(0, ManualRelease::count());
+    }
+
     public function test_sections_can_be_restricted_from_manual_structure(): void
     {
         $section = $this->publishedSection();

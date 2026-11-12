@@ -30,7 +30,7 @@ class SystemsTable
                         ->filter()
                         ->join(', '))
                     ->placeholder('No owner'),
-                TextColumn::make('department.name')->label('Department')->placeholder('—'),
+                TextColumn::make('department.name')->label('Department')->placeholder('â€”'),
                 TextColumn::make('criticality')
                     ->badge()
                     ->formatStateUsing(fn ($state) => System::CRITICALITIES[$state] ?? $state)
@@ -48,7 +48,7 @@ class SystemsTable
                     ->label('Manual')
                     ->prefix('v')
                     ->description(fn (System $record) => $record->unreleased_count > 0
-                        ? $record->unreleased_count . ' ' . str('change')->plural($record->unreleased_count) . ' not in a version yet'
+                        ? $record->unreleased_count . ' ' . str('change')->plural($record->unreleased_count) . ' waiting for the library'
                         : null),
                 TextColumn::make('library_visibility')
                     ->label('Library')
@@ -169,7 +169,7 @@ class SystemsTable
     {
         $items = app(\App\Services\ManualReleaseService::class)->upcomingChanges($record)
             ->take(15)
-            ->map(fn ($c) => '<li><strong>' . e($c['section']) . '</strong>' . ($c['summary'] ? ' � ' . e($c['summary']) : '') . '</li>')
+            ->map(fn ($c) => '<li><strong>' . e($c['section']) . '</strong>' . ($c['summary'] ? ' — ' . e($c['summary']) : '') . '</li>')
             ->join('');
 
         $more = max(0, (int) $record->unreleased_count - 15);
@@ -177,7 +177,7 @@ class SystemsTable
         return new \Illuminate\Support\HtmlString(
             '<p>Changes approved since v' . e($record->manual_version) . ':</p>'
             . '<ul style="list-style:disc;padding-left:1.25rem;margin-top:.5rem">' . $items . '</ul>'
-            . ($more > 0 ? "<p>�and {$more} more.</p>" : '')
+            . ($more > 0 ? "<p>…and {$more} more.</p>" : '')
         );
     }
 }

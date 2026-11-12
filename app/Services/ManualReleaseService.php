@@ -85,7 +85,7 @@ class ManualReleaseService
 
         return ManualSection::query()
             ->where('system_id', $system->id)
-            ->whereHas('currentRevision', fn ($q) => $q->where('release_id', $latest->id))
+            ->whereHas('revisions', fn ($q) => $q->where('release_id', $latest->id))
             ->pluck('id')
             ->mapWithKeys(fn ($id) => [$id => true])
             ->all();

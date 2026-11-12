@@ -304,6 +304,55 @@ class DocsLibraryTest extends TestCase
         $this->assertSame('1.1', $release->version);
     }
 
+    public function test_library_shows_the_last_published_version_until_the_owner_publishes(): void
+    {
+        // The owner edits a section and adds a new one: approved straight away (staff see it)…
+        Sanctum::actingAs($this->owner);
+        $id = $this->postJson("/api/v1/systems/{$this->system->slug}/manual/changes", [
+            'type' => 'edit', 'manual_section_id' => $this->intro->id,
+        ])->json('data.id');
+        $this->patchJson("/api/v1/manual-changes/{$id}", ['title' => 'Getting started fast', 'body' => '<p>Brand new wording.</p>'])->assertOk();
+        $this->postJson("/api/v1/manual-changes/{$id}/submit")->assertOk();
+        $disputes = $this->publish('Disputes', '<p>Chargeback disputes.</p>');
+        app('auth')->forgetGuards();
+
+        Sanctum::actingAs($this->owner);
+        $this->getJson("/api/v1/systems/{$this->system->slug}/manual/sections/{$this->intro->id}")
+            ->assertJsonPath('data.title', 'Getting started fast');
+        app('auth')->forgetGuards();
+
+        // …but library readers still get version 1.0.
+        $this->get("/docs/payments-gateway/{$this->intro->slug}")
+            ->assertOk()
+            ->assertSee('Refund steps for payments.')
+            ->assertDontSee('Brand new wording.')
+            ->assertSee('Getting started')
+            ->assertDontSee('Getting started fast');
+        $this->get("/docs/payments-gateway/{$disputes->slug}")->assertNotFound();
+        $this->get('/docs/search?q=chargeback')->assertSee('No results');
+        $this->get('/docs/payments-gateway')->assertDontSee('Disputes');
+
+        // Publishing a version releases both.
+        app(ManualReleaseService::class)->publish($this->system->fresh(), $this->owner, false, 'Clearer intro, disputes');
+
+        $this->get("/docs/payments-gateway/{$this->intro->slug}")
+            ->assertSee('Brand new wording.')
+            ->assertSee('Getting started fast')
+            ->assertSee('Updated in version 1.1');
+        $this->get("/docs/payments-gateway/{$disputes->slug}")->assertOk()->assertSee('Chargeback disputes.');
+    }
+
+    public function test_library_numbers_have_no_gaps_for_unreleased_sections(): void
+    {
+        // A new chapter placed first is not released yet: the library still numbers from 1.
+        $new = $this->publish('Welcome', '<p>Hello</p>');
+        app(ManualService::class)->moveTo($new, null);
+        $outline = app(ManualService::class)->libraryOutline($this->system->fresh());
+
+        $this->assertFalse($outline->contains('id', $new->id));
+        $this->assertSame(['1', '2', '2.1'], $outline->pluck('number')->all());
+    }
+
     public function test_search_finds_readable_sections_only(): void
     {
         $this->get('/docs/search?q=refund')->assertOk()->assertSee('Getting started');

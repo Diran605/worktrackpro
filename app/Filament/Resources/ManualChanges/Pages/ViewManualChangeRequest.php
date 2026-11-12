@@ -19,11 +19,12 @@ class ViewManualChangeRequest extends ViewRecord
     {
         return [
             Action::make('approve')
-                ->label('Approve & publish')
+                ->label('Approve')
                 ->icon('heroicon-o-check')
                 ->color('success')
                 ->visible(fn () => $this->canReviewRecord())
-                ->modalHeading('Approve and publish this change')
+                ->modalHeading('Approve this change')
+                ->modalDescription('Staff see the change in the portal straight away. Readers of the documentation library see it when the next version of the manual is published.')
                 ->schema(fn () => array_filter([
                     $this->record->type === ManualChangeRequest::TYPE_IMPORT
                         ? CheckboxList::make('include')
@@ -33,6 +34,19 @@ class ViewManualChangeRequest extends ViewRecord
                             ->default(array_keys($this->record->importSections()))
                             ->bulkToggleable()
                         : null,
+                    \Filament\Forms\Components\Toggle::make('publish_now')
+                        ->label('Publish to the library now as a minor version')
+                        ->helperText(fn () => 'For urgent fixes. Releases this and every other approved change as v'
+                            . $this->record->system->nextManualVersion(false) . '. Leave off to group it with other changes and publish a version later under Knowledge > Systems.')
+                        ->visible(fn () => $this->record->system->isInLibrary())
+                        ->live(),
+                    \Filament\Forms\Components\Textarea::make('release_summary')
+                        ->label('What changed (shown to readers)')
+                        ->placeholder('e.g. Corrected the support phone number')
+                        ->rows(2)
+                        ->maxLength(2000)
+                        ->visible(fn ($get) => (bool) $get('publish_now'))
+                        ->required(fn ($get) => (bool) $get('publish_now')),
                 ]))
                 ->action(function (array $data) {
                     $skip = [];
@@ -43,7 +57,22 @@ class ViewManualChangeRequest extends ViewRecord
 
                     app(ManualService::class)->approve($this->record, auth()->user(), $skip);
 
-                    Notification::make()->title('Published')->body('The manual has been updated and the author notified.')->success()->send();
+                    if (!empty($data['publish_now'])) {
+                        $release = app(\App\Services\ManualReleaseService::class)
+                            ->publish($this->record->system->fresh(), auth()->user(), false, $data['release_summary']);
+
+                        Notification::make()
+                            ->title("Approved and published as version {$release->version}")
+                            ->body('Readers of the documentation library can see it now. The author has been notified.')
+                            ->success()
+                            ->send();
+                    } else {
+                        Notification::make()
+                            ->title('Approved')
+                            ->body('Staff can see it now. It reaches the documentation library with the next published version. The author has been notified.')
+                            ->success()
+                            ->send();
+                    }
                     $this->backToQueue();
                 }),
 

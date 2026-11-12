@@ -11,6 +11,6 @@ class ListManualReleases extends ListRecords
 
     public function getSubheading(): ?string
     {
-        return 'Approved changes are live straight away. Owners group them into a version with "Publish version" under Knowledge > Systems.';
+        return 'Approved changes reach staff straight away, and the documentation library when an owner publishes a version ("Publish version" under Knowledge > Systems, or "Publish now" when approving).';
     }
 }

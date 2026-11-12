@@ -45,7 +45,8 @@ abstract class DocsController extends Controller
     /** @return Collection<int, ManualSection> */
     protected function outline(System $system): Collection
     {
-        return app(ManualService::class)->publishedOutline($system);
+        // As of the last published version (see ManualService::libraryOutline).
+        return app(ManualService::class)->libraryOutline($system);
     }
 
     /**

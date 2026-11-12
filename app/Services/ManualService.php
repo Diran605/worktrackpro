@@ -44,6 +44,67 @@ class ManualService
     }
 
     /**
+     * The manual as readers of the documentation library see it: each section as of the last
+     * published version. Changes approved since then stay in the staff portal until the owner
+     * publishes a version.
+     *
+     * - A section's text, title and file come from its latest revision that is in a version.
+     * - Sections never released yet (and anything under them) are left out.
+     * - Numbers are worked out again over what's left, so there are no gaps.
+     *
+     * Archiving, moving and reordering apply straight away. The returned models are for
+     * display only: never save them.
+     *
+     * @return Collection<int, ManualSection>
+     */
+    public function libraryOutline(System $system): Collection
+    {
+        $outline = ManualSection::query()
+            ->where('system_id', $system->id)
+            ->published()
+            ->orderBy('sort_key')
+            ->get();
+
+        // Latest released revision of each section.
+        $sectionIds = $outline->pluck('id');
+        $released = \App\Models\ManualSectionRevision::query()
+            ->whereIn('id', fn ($q) => $q->selectRaw('max(id)')
+                ->from('manual_section_revisions')
+                ->whereIn('manual_section_id', $sectionIds)
+                ->whereNotNull('release_id')
+                ->groupBy('manual_section_id'))
+            ->get()
+            ->keyBy('manual_section_id');
+
+        $kept = [];
+        $counters = [];   // parent id => children numbered so far
+        $numbers = [];    // section id => number
+
+        $result = $outline->filter(function (ManualSection $section) use ($released, &$kept, &$counters, &$numbers) {
+            $parentId = $section->parent_id;
+            $revision = $released[$section->id] ?? null;
+
+            if (!$revision || ($parentId && !isset($kept[$parentId]))) {
+                return false;
+            }
+
+            $kept[$section->id] = true;
+            $counters[$parentId ?? 0] = ($counters[$parentId ?? 0] ?? 0) + 1;
+            $numbers[$section->id] = ($parentId ? $numbers[$parentId] . '.' : '') . $counters[$parentId ?? 0];
+
+            $section->setRelation('currentRevision', $revision);
+            $section->number = $numbers[$section->id];
+            if (filled($revision->title)) {
+                $section->title = $revision->title;
+            }
+
+            return true;
+        })->values();
+
+        return $result;
+    }
+
+    /**
      * Published sections as a nested tree: [['section' => ManualSection, 'children' => [...]], ...].
      */
     public function publishedTree(System $system): array
@@ -184,7 +245,7 @@ class ManualService
                 [$change->author_id],
                 "Approved: {$change->title}",
                 "Your change \"{$change->title}\" to the {$change->system->name} manual was approved by {$reviewer->name} "
-                    . 'and is now live. It will be listed in the next published version of the manual.',
+                    . 'and staff can read it now. It reaches the documentation library when the next version of the manual is published.',
                 $reviewer->id,
             );
         }

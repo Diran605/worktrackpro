@@ -96,7 +96,7 @@ class SystemController extends DocsController
         $locked = $this->access()->lockedSectionIds($system, $this->outline($system));
 
         try {
-            $export = $exports->request($system, $this->access()->staffUser(), null, [], array_keys($locked));
+            $export = $exports->request($system, $this->access()->staffUser(), null, [], array_keys($locked), released: true);
         } catch (ValidationException) {
             abort(404); // nothing published yet
         }

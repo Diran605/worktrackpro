@@ -127,7 +127,7 @@
                             <template v-else>Only staff can read this manual, here in the portal.</template>
                         </p>
                         <p v-if="manual.unreleased_changes" class="text-xs text-amber-700 mt-2">
-                            {{ manual.unreleased_changes }} approved {{ manual.unreleased_changes === 1 ? 'change is' : 'changes are' }} live but not in a version yet. Publish a version from the admin panel (Knowledge › Systems › Publish version).
+                            {{ manual.unreleased_changes }} approved {{ manual.unreleased_changes === 1 ? 'change is' : 'changes are' }} not in the library yet. Staff can read {{ manual.unreleased_changes === 1 ? 'it' : 'them' }} here; library readers will see {{ manual.unreleased_changes === 1 ? 'it' : 'them' }} when you publish a version (admin panel › Knowledge › Systems › Publish version).
                         </p>
                         <button v-if="manual.library.path" @click="openInLibrary(manual.library.path)"
                                 class="mt-3 w-full px-4 py-2 rounded-xl text-sm font-semibold bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
@@ -138,7 +138,7 @@
                     <div v-if="manual.can.contribute" class="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
                         <h2 class="font-bold text-gray-900 mb-1">Contribute</h2>
                         <p class="text-xs text-gray-500 mb-3">
-                            {{ manual.can.approve ? 'You own this system, so your changes go live straight away. Group them into a version when you are ready.' : 'Changes go to the system owner for approval before they are published.' }}
+                            {{ manual.can.approve ? 'You own this system, so staff see your changes straight away. They reach the documentation library when you publish a version.' : 'Changes go to the system owner for approval before they are published.' }}
                         </p>
                         <div class="flex flex-col gap-2">
                             <router-link :to="{ name: 'ManualEditor', params: { slug } }"
