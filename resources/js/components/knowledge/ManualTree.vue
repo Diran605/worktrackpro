@@ -6,7 +6,7 @@
                 class="flex items-start gap-2 px-2 py-1.5 rounded-lg text-sm transition-colors"
                 :class="node.id === activeId ? 'bg-teal-50 text-teal-800 font-semibold' : 'text-gray-700 hover:bg-gray-50'"
             >
-                <span class="text-gray-400 tabular-nums shrink-0 min-w-[2rem]">{{ node.number }}</span>
+                <span class="text-gray-400 tabular-nums shrink-0 min-w-8">{{ node.number }}</span>
                 <span class="flex-1 min-w-0">{{ node.title }}</span>
                 <svg v-if="node.restricted" class="w-3.5 h-3.5 mt-0.5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <title>Restricted in the documentation library: only staff and readers with an access code that includes restricted chapters can read it there</title>

@@ -3,7 +3,7 @@
         <!-- Toolbar -->
         <div v-if="editor" class="flex flex-wrap items-center gap-0.5 border-b border-gray-200 bg-gray-50 px-2 py-1.5 sticky top-0 z-10">
             <button v-for="b in markButtons" :key="b.name" type="button" :title="b.title" @click="b.run()"
-                    class="px-2 py-1 rounded text-sm font-semibold min-w-[2rem]"
+                    class="px-2 py-1 rounded text-sm font-semibold min-w-8"
                     :class="editor.isActive(b.name, b.attrs) ? 'bg-teal-100 text-teal-800' : 'text-gray-700 hover:bg-gray-200'">
                 <span :class="b.class">{{ b.label }}</span>
             </button>
