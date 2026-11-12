@@ -149,15 +149,17 @@ class ManualService
      *
      * @param array<int> $skipImportIndexes For Word imports: indexes of sections to leave out (their sub-sections are left out too).
      */
-    public function approve(ManualChangeRequest $change, User $reviewer, bool $major = false, array $skipImportIndexes = []): void
+    public function approve(ManualChangeRequest $change, User $reviewer, array $skipImportIndexes = []): void
     {
         if ($change->status !== ManualChangeRequest::STATUS_SUBMITTED) {
             throw ValidationException::withMessages(['status' => 'Only submitted changes can be approved.']);
         }
 
-        DB::transaction(function () use ($change, $reviewer, $major, $skipImportIndexes) {
+        DB::transaction(function () use ($change, $reviewer, $skipImportIndexes) {
             $system = System::query()->lockForUpdate()->findOrFail($change->system_id);
-            $newVersion = $system->nextManualVersion($major);
+            // The change goes live now; the version number only moves when the owner publishes a
+            // version (ManualReleaseService), so the revision waits as an "upcoming change".
+            $newVersion = null;
 
             match ($change->type) {
                 ManualChangeRequest::TYPE_CREATE => $this->applyCreate($change, $reviewer, $newVersion),
@@ -165,13 +167,11 @@ class ManualService
                 ManualChangeRequest::TYPE_IMPORT => $this->applyImport($change, $reviewer, $newVersion, $skipImportIndexes),
             };
 
-            $system->update(['manual_version' => $newVersion]);
 
             $change->update([
                 'status' => ManualChangeRequest::STATUS_APPROVED,
                 'reviewer_id' => $reviewer->id,
                 'reviewed_at' => now(),
-                'is_major' => $major,
             ]);
 
             $this->renumber($system);
@@ -184,7 +184,7 @@ class ManualService
                 [$change->author_id],
                 "Approved: {$change->title}",
                 "Your change \"{$change->title}\" to the {$change->system->name} manual was approved by {$reviewer->name} "
-                    . "and is now published (manual v{$change->system->fresh()->manual_version}).",
+                    . 'and is now live. It will be listed in the next published version of the manual.',
                 $reviewer->id,
             );
         }
@@ -250,7 +250,7 @@ class ManualService
     // Applying approved changes
     // ---------------------------------------------------------------------------------------------
 
-    private function applyCreate(ManualChangeRequest $change, User $reviewer, string $manualVersion): ManualSection
+    private function applyCreate(ManualChangeRequest $change, User $reviewer, ?string $manualVersion): ManualSection
     {
         $section = ManualSection::create([
             'system_id' => $change->system_id,
@@ -270,7 +270,7 @@ class ManualService
         return $section;
     }
 
-    private function applyEdit(ManualChangeRequest $change, User $reviewer, string $manualVersion): void
+    private function applyEdit(ManualChangeRequest $change, User $reviewer, ?string $manualVersion): void
     {
         $section = ManualSection::query()
             ->where('system_id', $change->system_id)
@@ -286,7 +286,7 @@ class ManualService
         $this->publishRevision($section, $change, $reviewer, $manualVersion);
     }
 
-    private function applyImport(ManualChangeRequest $change, User $reviewer, string $manualVersion, array $skip): void
+    private function applyImport(ManualChangeRequest $change, User $reviewer, ?string $manualVersion, array $skip): void
     {
         $afterId = $change->proposed_after_id;
         $stack = [];           // depth => section id of the most recent section at that depth
@@ -350,7 +350,7 @@ class ManualService
         }
     }
 
-    private function publishRevision(ManualSection $section, ManualChangeRequest $change, User $reviewer, string $manualVersion): void
+    private function publishRevision(ManualSection $section, ManualChangeRequest $change, User $reviewer, ?string $manualVersion): void
     {
         $revision = ManualSectionRevision::create([
             'manual_section_id' => $section->id,

@@ -78,7 +78,7 @@ class KnowledgeAdminPagesTest extends TestCase
             ->assertSee('How leads work');
 
         Livewire::test(ViewManualChangeRequest::class, ['record' => $change->getRouteKey()])
-            ->callAction('approve', data: ['is_major' => false])
+            ->callAction('approve')
             ->assertHasNoActionErrors()
             ->assertRedirect(ManualChangeRequestResource::getUrl('index'));
 

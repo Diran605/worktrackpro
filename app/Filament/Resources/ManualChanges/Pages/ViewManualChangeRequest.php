@@ -8,7 +8,6 @@ use App\Services\ManualService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 
@@ -26,9 +25,6 @@ class ViewManualChangeRequest extends ViewRecord
                 ->visible(fn () => $this->canReviewRecord())
                 ->modalHeading('Approve and publish this change')
                 ->schema(fn () => array_filter([
-                    Toggle::make('is_major')
-                        ->label('Major change')
-                        ->helperText('Bumps the manual to the next major version (e.g. 1.4 → 2.0). Use it when the way the system works has changed.'),
                     $this->record->type === ManualChangeRequest::TYPE_IMPORT
                         ? CheckboxList::make('include')
                             ->label('Sections to publish')
@@ -45,7 +41,7 @@ class ViewManualChangeRequest extends ViewRecord
                         $skip = array_values(array_diff(array_keys($this->record->importSections()), $included));
                     }
 
-                    app(ManualService::class)->approve($this->record, auth()->user(), (bool) ($data['is_major'] ?? false), $skip);
+                    app(ManualService::class)->approve($this->record, auth()->user(), $skip);
 
                     Notification::make()->title('Published')->body('The manual has been updated and the author notified.')->success()->send();
                     $this->backToQueue();

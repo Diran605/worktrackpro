@@ -6,7 +6,8 @@ import vue from '@vitejs/plugin-vue';
 export default defineConfig({
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.js'],
+            // app.* = staff portal (Vue); docs.* = public documentation library (server-rendered)
+            input: ['resources/css/app.css', 'resources/js/app.js', 'resources/css/docs.css', 'resources/js/docs.js'],
             refresh: true,
         }),
         tailwindcss(),

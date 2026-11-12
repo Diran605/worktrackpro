@@ -329,7 +329,7 @@ class ManualPdfRenderer
                     ->get()
                     ->map(fn (ManualSectionRevision $r) => [
                         'date' => $r->published_at?->setTimezone(LocalTime::timezoneFor($system->organisation_id))->format('j M Y'),
-                        'version' => $r->manual_version,
+                        'version' => $r->manual_version ?: 'Upcoming', // approved but not yet in a published version
                         'section' => trim(($r->section?->number ?? '') . ' ' . ($r->section?->title ?? $r->title)),
                         'summary' => $r->change_summary,
                         'author' => $r->author?->name,

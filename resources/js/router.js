@@ -92,7 +92,8 @@ const routes = [
 ];
 
 const router = createRouter({
-    history: createWebHistory(),
+    // The portal lives under /staff (the public docs library has the front of the site).
+    history: createWebHistory('/staff/'),
     routes,
 });
 

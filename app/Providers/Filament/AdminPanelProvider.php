@@ -71,7 +71,7 @@ class AdminPanelProvider extends PanelProvider
                 'portal' => \Filament\Navigation\MenuItem::make()
                     ->label('Back to Portal')
                     ->icon('heroicon-o-arrow-left')
-                    ->url('/')
+                    ->url('/staff')
                     ->openUrlInNewTab(false),
             ]);
     }

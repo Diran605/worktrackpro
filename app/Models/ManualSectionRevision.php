@@ -23,6 +23,7 @@ class ManualSectionRevision extends Model
         'page_to',
         'change_summary',
         'manual_version',
+        'release_id',
         'author_id',
         'approved_by',
         'published_at',
@@ -35,6 +36,11 @@ class ManualSectionRevision extends Model
     public function section(): BelongsTo
     {
         return $this->belongsTo(ManualSection::class, 'manual_section_id');
+    }
+
+    public function release(): BelongsTo
+    {
+        return $this->belongsTo(ManualRelease::class, 'release_id');
     }
 
     public function author(): BelongsTo

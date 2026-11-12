@@ -31,6 +31,7 @@ Route::prefix('v1')->group(function () {
             Route::get('me', [AuthController::class, 'me']);
             Route::patch('password', [AuthController::class, 'updatePassword']);
             Route::post('admin-link', [\App\Http\Controllers\AdminHandoffController::class, 'link']);
+            Route::post('docs-link', [\App\Http\Controllers\AdminHandoffController::class, 'docsLink']);
             Route::post('admin-logout-link', [\App\Http\Controllers\AdminHandoffController::class, 'logoutLink']);
         });
     });

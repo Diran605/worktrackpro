@@ -61,6 +61,47 @@ class AdminHandoffController extends Controller
     }
 
     /**
+     * API: a one-time link that signs the portal user in to the documentation library (so restricted
+     * manuals open for them there) and lands on the given library page.
+     */
+    public function docsLink(Request $request): JsonResponse
+    {
+        $data = $request->validate(['path' => ['nullable', 'string', 'max:500']]);
+        $path = $data['path'] ?? '/';
+
+        // Only pages on this site.
+        abort_unless(str_starts_with($path, '/') && !str_starts_with($path, '//'), 422);
+
+        $nonce = Str::random(40);
+        Cache::put("docs-handoff:{$nonce}", ['user' => $request->user()->id, 'path' => $path], self::TTL_SECONDS);
+
+        return response()->json([
+            'url' => URL::temporarySignedRoute('docs.handoff', now()->addSeconds(self::TTL_SECONDS), ['nonce' => $nonce]),
+        ]);
+    }
+
+    /**
+     * Web (signed): sign in to the docs library as the portal user and open the page.
+     */
+    public function enterDocs(Request $request): RedirectResponse
+    {
+        $payload = Cache::pull('docs-handoff:' . $request->query('nonce'));
+        abort_unless(is_array($payload), 403, 'This link has expired. Use "Open in library" again.');
+
+        $user = User::find($payload['user']);
+        abort_unless($user && $user->is_active, 403);
+
+        if (Auth::guard('web')->id() !== $user->id) {
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            Auth::guard('web')->login($user);
+            $request->session()->regenerate();
+        }
+
+        return redirect()->to(url($payload['path']));
+    }
+
+    /**
      * API: a link the portal opens after logging out, to end the /admin session in this browser too.
      */
     public function logoutLink(Request $request): JsonResponse
