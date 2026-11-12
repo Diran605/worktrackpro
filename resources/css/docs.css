@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+/* Public documentation library. Layout follows docs.fortinet.com: white header with menus and
+   search, light grey page, white panels, an accent colour taken from the organisation. */
+
+@theme {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+:root {
+    --docs-accent: #0d9488;
+}
+
+.docs-accent { color: var(--docs-accent); }
+.docs-accent-bg { background-color: var(--docs-accent); }
+.docs-accent-border { border-color: var(--docs-accent); }
+
+/* Dropdown menus built on <details> */
+.docs-menu > summary { list-style: none; cursor: pointer; }
+.docs-menu > summary::-webkit-details-marker { display: none; }
+
+/* Contents tree */
+.docs-tree details > summary { list-style: none; cursor: pointer; }
+.docs-tree details > summary::-webkit-details-marker { display: none; }
+.docs-tree details > summary .chev { transition: transform .15s; }
+.docs-tree details[open] > summary .chev { transform: rotate(90deg); }
+
+/* Section content */
+.docs-content { @apply text-gray-800 leading-relaxed text-[15px]; }
+.docs-content > * + * { @apply mt-4; }
+.docs-content h1 { @apply text-2xl font-bold text-gray-900 mt-8; }
+.docs-content h2 { @apply text-xl font-bold text-gray-900 mt-8 scroll-mt-24; }
+.docs-content h3 { @apply text-lg font-semibold text-gray-900 mt-6 scroll-mt-24; }
+.docs-content h4 { @apply font-semibold text-gray-900 mt-5; }
+.docs-content ul { @apply list-disc pl-6 space-y-1; }
+.docs-content ol { @apply list-decimal pl-6 space-y-1; }
+.docs-content a { color: var(--docs-accent); @apply underline; }
+.docs-content blockquote { border-left-color: var(--docs-accent); @apply border-l-4 bg-gray-50 pl-4 py-2 text-gray-700; }
+.docs-content code { @apply bg-gray-100 rounded px-1 py-0.5 text-[13px]; }
+.docs-content pre { @apply bg-gray-900 text-gray-100 rounded-md p-4 overflow-x-auto text-[13px]; }
+.docs-content pre code { @apply bg-transparent p-0 text-inherit; }
+.docs-content img { @apply max-w-full h-auto rounded border border-gray-200; }
+.docs-content table { @apply w-full border-collapse text-sm; }
+.docs-content th, .docs-content td { @apply border border-gray-300 px-3 py-2 text-left align-top; }
+.docs-content th { @apply bg-gray-100 font-semibold; }
+.docs-content hr { @apply border-gray-200 my-8; }
+
+@media print {
+    .docs-no-print { display: none !important; }
+    .docs-content { font-size: 11pt; }
+}

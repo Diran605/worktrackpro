@@ -36,6 +36,28 @@ class OrganisationForm
                             ->required(),
                     ]),
 
+                Section::make('Documentation library address')
+                    ->description('Where this organisation\'s public documentation library is served.')
+                    ->schema([
+                        TextInput::make('docs_domain')
+                            ->label('Own web address (optional)')
+                            ->placeholder('docs.example.com')
+                            ->maxLength(255)
+                            ->unique(ignoreRecord: true)
+                            ->regex('/^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i')
+                            ->validationMessages(['regex' => 'Enter a domain name only, like docs.example.com — no https:// and no slashes.'])
+                            ->dehydrateStateUsing(fn (?string $state) => filled($state) ? strtolower(trim($state)) : null)
+                            ->rule(fn () => function (string $attribute, $value, \Closure $fail) {
+                                $appHost = parse_url((string) config('app.url'), PHP_URL_HOST);
+                                if ($value && strcasecmp($value, (string) $appHost) === 0) {
+                                    $fail('This is the main address of WorkTrack Pro. Use a separate domain or subdomain.');
+                                }
+                            })
+                            ->helperText(fn ($record) => 'Point this domain (a DNS CNAME or A record) at this server first, then enter it here. '
+                                . 'The library is always available at ' . url('/org/' . ($record?->slug ?? '{slug}'))
+                                . ', and the default organisation\'s library is also at ' . url('/') . '.'),
+                    ]),
+
                 Section::make('Branding')
                     ->description('Customize colors and assets for this organisation')
                     ->schema([

@@ -124,7 +124,8 @@ class KnowledgeBaseTest extends TestCase
 
         app(ManualService::class)->approve($change, $this->owner);
 
-        $this->assertSame('0.1', $this->system->fresh()->manual_version);
+        // Approval makes the section live; the version only changes when the owner publishes one.
+        $this->assertSame('0.0', $this->system->fresh()->manual_version);
         $this->getJson($this->base())
             ->assertJsonPath('data.tree.0.title', 'Refunds')
             ->assertJsonPath('data.tree.0.number', '1');
@@ -152,7 +153,7 @@ class KnowledgeBaseTest extends TestCase
         $this->postJson("/api/v1/manual-changes/{$change->id}/submit")->assertOk()->assertJsonPath('data.status', 'submitted');
     }
 
-    public function test_editing_creates_a_new_revision_and_major_bump(): void
+    public function test_editing_creates_a_new_revision_and_a_major_release_bumps_the_version(): void
     {
         $section = $this->publish('Overview');
 
@@ -169,12 +170,16 @@ class KnowledgeBaseTest extends TestCase
         $this->patchJson("/api/v1/manual-changes/{$id}", ['body' => '<p>Updated</p>', 'change_summary' => 'Clarified'])->assertOk();
         $this->postJson("/api/v1/manual-changes/{$id}/submit")->assertOk();
 
-        app(ManualService::class)->approve(ManualChangeRequest::find($id), $this->owner, major: true);
+        app(ManualService::class)->approve(ManualChangeRequest::find($id), $this->owner);
 
         $section->refresh();
         $this->assertSame(2, $section->currentVersion());
         $this->assertSame('<p>Updated</p>', $section->currentRevision->body);
+
+        $release = app(\App\Services\ManualReleaseService::class)->publish($this->system->fresh(), $this->owner, true, 'Clarified the overview');
+        $this->assertSame('1.0', $release->version);
         $this->assertSame('1.0', $this->system->fresh()->manual_version);
+        $this->assertSame($release->id, $section->currentRevision->fresh()->release_id);
     }
 
     public function test_drafts_are_private_to_their_author(): void

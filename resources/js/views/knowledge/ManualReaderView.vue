@@ -26,6 +26,11 @@
                                 <span class="text-gray-400 mr-2">{{ section.number }}</span>{{ section.title }}
                             </h1>
                             <div class="flex gap-2 shrink-0">
+                                <button v-if="section.library_path" @click="openInLibrary(section.library_path)"
+                                        title="Open this section in the public documentation library"
+                                        class="px-3 py-1.5 rounded-lg text-sm font-semibold bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
+                                    🌐 Library
+                                </button>
                                 <button @click="showExport = true"
                                         class="px-3 py-1.5 rounded-lg text-sm font-semibold bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
                                     ⬇ PDF
@@ -38,6 +43,7 @@
                         </div>
                         <div class="mt-2 text-xs text-gray-500 flex flex-wrap gap-x-4 gap-y-1">
                             <span>Version {{ section.version }}</span>
+                            <span v-if="section.restricted" class="text-amber-700 font-semibold" title="Only staff and readers with an access code that includes restricted chapters can read it in the documentation library">🔒 Restricted in the library</span>
                             <span v-if="section.updated_at">Updated {{ formatDate(section.updated_at) }}<template v-if="section.updated_by"> by {{ section.updated_by }}</template></span>
                             <span v-if="section.last_verified_at" :class="section.is_stale ? 'text-amber-700 font-semibold' : ''">
                                 {{ section.is_stale ? '⚠ Not verified since' : 'Verified' }} {{ formatDate(section.last_verified_at) }}
@@ -91,6 +97,7 @@ import { useRoute, useRouter } from 'vue-router';
 import api from '../../lib/axios';
 import ManualTree from '../../components/knowledge/ManualTree.vue';
 import ExportManualDialog from '../../components/knowledge/ExportManualDialog.vue';
+import { openInLibrary } from '../../lib/docsLink';
 
 const route = useRoute();
 const router = useRouter();

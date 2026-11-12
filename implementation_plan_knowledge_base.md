@@ -10,6 +10,7 @@ Turns company systems/projects from "knowledge in people's heads" into structure
 | 1 — System registry | ✅ Done (2026-11-11) |
 | 2 — Manuals | ✅ Done (2026-11-11) |
 | 3 — Manual generation (PDF) | ✅ Done (2026-11-13) |
+| 3B — Documentation Library (public docs site) | Built (2026-11-12), awaiting merge. Library shows the last published version |
 | 4 — Competency & readiness | Not started |
 | 5 — Tickets & FAQ | Not started |
 | 6 — Insights | Not started |
@@ -190,6 +191,104 @@ Portal: export dialog in the reader (whole manual / this section / pick sections
 
 ### Server requirement
 `qpdf` binary installed on the server (Windows build available for local dev). Path configurable via `config/knowledge.php`.
+
+---
+
+## Phase 3B: Documentation Library (public docs site)
+
+A public documentation website in the style of [docs.fortinet.com](https://docs.fortinet.com). Systems grouped by category on a library home page, a page per system, and a reader with a contents tree. Manuals can be public, or restricted to staff and to readers holding an access code.
+
+### Decisions
+
+| Topic | Decision |
+|---|---|
+| Who can read | Each manual is **Not in library** (internal, as today), **Public** (anyone) or **Restricted** (staff + readers whose access code unlocks it). A chapter can be made **Restricted** inside a public manual (e.g. "Administration"). It can only be stricter than its manual, never looser. |
+| Access codes | Managed under Knowledge in the admin panel; not connected to Clients & Projects. Each code picks which manuals it opens and, per manual, whether it includes restricted chapters. Optional expiry; admins can deactivate a code and see its use. |
+| Versions | One living document per system. Approved changes go live immediately; the **owner publishes versions** ("Publish version 1.1" + a summary, minor or major). Readers see the current version, a "What's changed" page and "Updated in vX" tags. Approvals no longer bump the version. |
+| Addresses | `/` = docs home of the default organisation (config). `/staff` = staff portal (was `/`). `/admin` = admin panel. Every organisation also gets `/org/{slug}`, and can be given its own subdomain or domain in its settings (super admin only). |
+| Default visibility | Existing and new manuals start as **Not in library**, so nothing becomes public until an owner/admin chooses. |
+
+### Site map
+
+| Page | Address (default organisation / custom domain) | Address (other organisations) |
+|---|---|---|
+| Library home | `/` | `/org/{org}` |
+| System page | `/docs/{system}` | `/org/{org}/docs/{system}` |
+| Section | `/docs/{system}/{section-slug}` | `/org/{org}/docs/{system}/{section-slug}` |
+| What's changed | `/docs/{system}/changes` | `/org/{org}/docs/{system}/changes` |
+| Search | `/search?q=` | `/org/{org}/search?q=` |
+| Enter access code | `/access` (POST) | `/org/{org}/access` |
+| Manual PDF | `/docs/{system}/pdf` | `/org/{org}/docs/{system}/pdf` |
+| Staff portal | `/staff`, `/staff/login`, `/staff/plans`, … | (same) |
+
+The organisation is resolved by: (1) the request's host matching an organisation's docs domain, else (2) the `/org/{org}` prefix, else (3) the default organisation (`DOCS_DEFAULT_ORGANISATION`, a slug).
+
+### UI (following docs.fortinet.com)
+
+- **Header (every page):** organisation logo + "DOCUMENT LIBRARY" (links home); menus **Systems** (mega-menu grouped by category, with "All systems"), **Systems A–Z** (alphabetical list with a filter box), **What's new**; a search box "Search documents"; on the right **Enter access code** and **Staff sign in** (→ `/staff/login`).
+- **Library home:** a search banner, then one block per category (category name + icon, its systems as links, "Show all"/"Return" when long), a "Recently updated" row of cards (system, version, date), optional banner(s) configured in settings (e.g. "New here? Start here"), and a footer with configurable link columns (support, company site) and "© organisation".
+- **System page:** title, summary and **"Version 2.3 · Updated 11 Nov 2026"**; an **"On this page"** sidebar listing the chapters; the chapters shown as grouped blocks (chapter title → its sections, like Fortinet's guide categories), restricted ones marked 🔒; a **Tools & resources** box (Download PDF, What's changed, How to get help); **Related systems** (same category).
+- **Reader:** breadcrumb (Home › Category › System › Chapter), a collapsible **contents tree** on the left with the current section highlighted and 🔒 on locked ones, **"Search this manual"** and a **PDF** icon above it; the section content in the middle with "Updated in v2.3" when applicable; on the right **"On this page"** (the section's headings); below: **Previous / Next**, "Last updated", **Was this helpful? Yes / No**, and **Copy link**.
+- **What's changed:** releases newest first: version, date, the owner's summary and the sections changed.
+- **Locked page:** "This content needs an access code": a code box, and **Request access** (name, email, reason → inbox message to the system's owners).
+- Responsive (menus collapse on phones), organisation colours and logo, print-friendly reader.
+- Built server-side with Blade + Tailwind (separate `docs` Vite entry) and a little Alpine.js for menus and tree toggles. Fast, works without JavaScript for reading, and is indexable by search engines (titles, descriptions, canonical URLs, `sitemap.xml` of public pages, restricted pages `noindex`).
+
+### Database
+
+- **`system_categories`:** `id`, `organisation_id`, `name`, `slug`, `description`, `icon`, `position`, timestamps. **`systems.category_id`** (nullable).
+- **`systems`:** add `library_visibility` (`hidden` | `public` | `restricted`, default `hidden`).
+- **`manual_sections`:** add `slug` (unique within a system, generated from the title) and `visibility` (`inherit` | `restricted`, default `inherit`).
+- **`manual_releases`:** `id`, `system_id`, `version`, `is_major`, `summary`, `published_by`, `published_at`, timestamps. **`manual_section_revisions.release_id`** (nullable): revisions approved since the last release have none ("upcoming changes").
+- **`docs_access_codes`:** `id`, `organisation_id`, `name`, `code` (encrypted, so admins can copy it again), `code_hash` (for lookup), `expires_at`, `is_active`, `last_used_at`, `use_count`, `notes`, `created_by`, timestamps.
+- **`docs_access_code_systems`:** `access_code_id`, `system_id`, `include_restricted` (bool).
+- **`docs_access_requests`:** `id`, `system_id`, `name`, `email`, `reason`, `ip`, `handled_at`, timestamps.
+- **`docs_feedback`:** `id`, `manual_section_id`, `helpful` (bool), `comment` (nullable), `visitor_hash`, timestamps (one vote per visitor per section).
+- **`organisations`:** add `docs_domain` (nullable, unique), `docs_title`, `docs_tagline`, `docs_footer_links` (json), `docs_banners` (json).
+- **Data migration:** each system with published content gets one release at its current `manual_version` ("Initial release") covering its existing revisions; section slugs are generated.
+
+### Backend
+
+- **Moving the staff portal to `/staff`:** web routes serve the Vue app at `/staff/{any?}`; Vue Router uses base `/staff/`; the 401 handler, "Back to Portal", Command Center and inbox/notification links point to `/staff`; **old addresses redirect** (`/login`, `/plans`, `/logs`, `/inbox`, `/team`, `/settings`, `/recurring-tasks`, `/knowledge/…` → `/staff/…`, 301).
+- **`ResolveDocsOrganisation` middleware:** finds the organisation (host → `/org/{org}` → default), 404 if the organisation is inactive.
+- **`DocsAccess` service:** works out what the current visitor can read:
+  - staff = a signed-in user (web session) of that organisation;
+  - code holders = codes unlocked in this browser's session, re-checked on every request (active, not expired), so a deactivated code stops working immediately;
+  - `canSeeManual(system)` and `canSeeSection(section)`, with chapter restriction applying to all its sub-sections.
+- **Controllers (`App\Http\Controllers\Docs\…`):** Home, System, Section, Changes, Search, Access (unlock code, rate-limited 5/min), AccessRequest (rate-limited), Feedback, Pdf (reuses `ManualExportService`, restricted to the sections the visitor may see), Sitemap.
+- **Releases:** `ManualReleaseService::publish(system, user, isMajor, summary)` stamps unreleased revisions with the release and bumps `systems.manual_version`. `ManualService::approve()` stops bumping the version.
+- **Search:** titles and text of the sections the visitor may see, ranked titles first, with excerpts (same approach as the portal search).
+- **Staff on the docs site:** anyone signed in to `/admin` is recognised. From the staff portal, "Open in library" signs them in to the docs site with a one-time link (same mechanism as Command Center).
+- **Domains:** `docs_domain` validated (hostname format, unique, not the main app host); only super admins can change it. Documentation in README for the DNS/HTTPS side.
+
+### Admin panel (Knowledge group)
+
+- **Systems:** new fields **Category** and **Library visibility** (Not in library / Public / Restricted); actions **Publish version** (shows the upcoming changes; choose minor/major; write the summary) and **View in library**.
+- **System Categories:** name, icon, order.
+- **Manual Structure:** per-section **Make restricted / Make public** action and a visibility column.
+- **Releases:** list per system (version, date, summary, who).
+- **Access Codes:** create (code generated, shown with a copy button), choose systems + "include restricted chapters" per system, expiry, active toggle, notes; columns for last used and use count; actions **Copy code**, **Regenerate**, **Deactivate**.
+- **Access Requests:** list with "Mark handled"; owners also get an inbox message per request.
+- **Feedback:** per section, helpful yes/no counts and comments.
+- **Library settings** (Organisation Settings): docs title, tagline, footer links, banners. **Docs domain** on the Organisations form (super admin only).
+
+### Staff portal
+
+- Manual reader and system page show the library visibility, an **Open in library** link for public/restricted manuals, and (for owners) "N unreleased changes".
+- Section visibility badge (🔒 Restricted) in the contents.
+
+### Tests
+
+Routing (old addresses redirect, `/staff` serves the portal); organisation resolution (host, `/org/{org}`, default); visibility rules (hidden manual 404s, public readable, restricted locked, restricted chapter inside public manual, sub-sections inherit); access codes (unlock, per-manual scope, include-restricted flag, expiry, deactivation takes effect immediately, rate limit); releases (approve no longer bumps, publish stamps revisions, What's changed content); search only returns visible sections; PDF only contains visible sections; feedback one vote per visitor; sitemap lists only public pages; admin pages render and actions work.
+
+### Build order
+
+1. Move the staff portal to `/staff` (with redirects), and update links.
+2. Data model + migrations (categories, visibility, slugs, releases, codes, requests, feedback, docs settings) and the release workflow.
+3. `DocsAccess` + organisation resolution + access codes.
+4. The docs site pages (home, system, reader, changes, search, locked page, PDF), following the UI above.
+5. Admin panel resources and settings; staff portal touches.
+6. Domains, sitemap/SEO, README.
 
 ---
 

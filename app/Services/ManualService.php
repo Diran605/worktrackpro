@@ -38,9 +38,72 @@ class ManualService
         return ManualSection::query()
             ->where('system_id', $system->id)
             ->published()
-            ->with('currentRevision')
+            ->with(['currentRevision', 'audiences:id,name'])
             ->orderBy('sort_key')
             ->get();
+    }
+
+    /**
+     * The manual as readers of the documentation library see it: each section as of the last
+     * published version. Changes approved since then stay in the staff portal until the owner
+     * publishes a version.
+     *
+     * - A section's text, title and file come from its latest revision that is in a version.
+     * - Sections never released yet (and anything under them) are left out.
+     * - Numbers are worked out again over what's left, so there are no gaps.
+     *
+     * Archiving, moving and reordering apply straight away. The returned models are for
+     * display only: never save them.
+     *
+     * @return Collection<int, ManualSection>
+     */
+    public function libraryOutline(System $system): Collection
+    {
+        $outline = ManualSection::query()
+            ->where('system_id', $system->id)
+            ->published()
+            ->with('audiences')
+            ->orderBy('sort_key')
+            ->get();
+
+        // Latest released revision of each section (with the version it was released in).
+        $sectionIds = $outline->pluck('id');
+        $released = \App\Models\ManualSectionRevision::query()
+            ->whereIn('id', fn ($q) => $q->selectRaw('max(id)')
+                ->from('manual_section_revisions')
+                ->whereIn('manual_section_id', $sectionIds)
+                ->whereNotNull('release_id')
+                ->groupBy('manual_section_id'))
+            ->with('release:id,version,is_major,published_at')
+            ->get()
+            ->keyBy('manual_section_id');
+
+        $kept = [];
+        $counters = [];   // parent id => children numbered so far
+        $numbers = [];    // section id => number
+
+        $result = $outline->filter(function (ManualSection $section) use ($released, &$kept, &$counters, &$numbers) {
+            $parentId = $section->parent_id;
+            $revision = $released[$section->id] ?? null;
+
+            if (!$revision || ($parentId && !isset($kept[$parentId]))) {
+                return false;
+            }
+
+            $kept[$section->id] = true;
+            $counters[$parentId ?? 0] = ($counters[$parentId ?? 0] ?? 0) + 1;
+            $numbers[$section->id] = ($parentId ? $numbers[$parentId] . '.' : '') . $counters[$parentId ?? 0];
+
+            $section->setRelation('currentRevision', $revision);
+            $section->number = $numbers[$section->id];
+            if (filled($revision->title)) {
+                $section->title = $revision->title;
+            }
+
+            return true;
+        })->values();
+
+        return $result;
     }
 
     /**
@@ -149,15 +212,17 @@ class ManualService
      *
      * @param array<int> $skipImportIndexes For Word imports: indexes of sections to leave out (their sub-sections are left out too).
      */
-    public function approve(ManualChangeRequest $change, User $reviewer, bool $major = false, array $skipImportIndexes = []): void
+    public function approve(ManualChangeRequest $change, User $reviewer, array $skipImportIndexes = []): void
     {
         if ($change->status !== ManualChangeRequest::STATUS_SUBMITTED) {
             throw ValidationException::withMessages(['status' => 'Only submitted changes can be approved.']);
         }
 
-        DB::transaction(function () use ($change, $reviewer, $major, $skipImportIndexes) {
+        DB::transaction(function () use ($change, $reviewer, $skipImportIndexes) {
             $system = System::query()->lockForUpdate()->findOrFail($change->system_id);
-            $newVersion = $system->nextManualVersion($major);
+            // The change goes live now; the version number only moves when the owner publishes a
+            // version (ManualReleaseService), so the revision waits as an "upcoming change".
+            $newVersion = null;
 
             match ($change->type) {
                 ManualChangeRequest::TYPE_CREATE => $this->applyCreate($change, $reviewer, $newVersion),
@@ -165,13 +230,11 @@ class ManualService
                 ManualChangeRequest::TYPE_IMPORT => $this->applyImport($change, $reviewer, $newVersion, $skipImportIndexes),
             };
 
-            $system->update(['manual_version' => $newVersion]);
 
             $change->update([
                 'status' => ManualChangeRequest::STATUS_APPROVED,
                 'reviewer_id' => $reviewer->id,
                 'reviewed_at' => now(),
-                'is_major' => $major,
             ]);
 
             $this->renumber($system);
@@ -184,7 +247,7 @@ class ManualService
                 [$change->author_id],
                 "Approved: {$change->title}",
                 "Your change \"{$change->title}\" to the {$change->system->name} manual was approved by {$reviewer->name} "
-                    . "and is now published (manual v{$change->system->fresh()->manual_version}).",
+                    . 'and staff can read it now. It reaches the documentation library when the next version of the manual is published.',
                 $reviewer->id,
             );
         }
@@ -250,7 +313,7 @@ class ManualService
     // Applying approved changes
     // ---------------------------------------------------------------------------------------------
 
-    private function applyCreate(ManualChangeRequest $change, User $reviewer, string $manualVersion): ManualSection
+    private function applyCreate(ManualChangeRequest $change, User $reviewer, ?string $manualVersion): ManualSection
     {
         $section = ManualSection::create([
             'system_id' => $change->system_id,
@@ -270,7 +333,7 @@ class ManualService
         return $section;
     }
 
-    private function applyEdit(ManualChangeRequest $change, User $reviewer, string $manualVersion): void
+    private function applyEdit(ManualChangeRequest $change, User $reviewer, ?string $manualVersion): void
     {
         $section = ManualSection::query()
             ->where('system_id', $change->system_id)
@@ -286,7 +349,7 @@ class ManualService
         $this->publishRevision($section, $change, $reviewer, $manualVersion);
     }
 
-    private function applyImport(ManualChangeRequest $change, User $reviewer, string $manualVersion, array $skip): void
+    private function applyImport(ManualChangeRequest $change, User $reviewer, ?string $manualVersion, array $skip): void
     {
         $afterId = $change->proposed_after_id;
         $stack = [];           // depth => section id of the most recent section at that depth
@@ -350,7 +413,7 @@ class ManualService
         }
     }
 
-    private function publishRevision(ManualSection $section, ManualChangeRequest $change, User $reviewer, string $manualVersion): void
+    private function publishRevision(ManualSection $section, ManualChangeRequest $change, User $reviewer, ?string $manualVersion): void
     {
         $revision = ManualSectionRevision::create([
             'manual_section_id' => $section->id,

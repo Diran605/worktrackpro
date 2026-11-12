@@ -26,6 +26,19 @@ class System extends Model
         'critical' => 'Critical',
     ];
 
+    public const LIBRARY_HIDDEN = 'hidden';
+    public const LIBRARY_PUBLIC = 'public';
+    public const LIBRARY_RESTRICTED = 'restricted';
+
+    public const LIBRARY_VISIBILITIES = [
+        self::LIBRARY_HIDDEN => 'Not in library',
+        self::LIBRARY_PUBLIC => 'Public',
+        self::LIBRARY_RESTRICTED => 'Restricted',
+    ];
+
+    /** Slugs used by the library's own pages (docs/search, docs/access…), so systems can't take them. */
+    public const RESERVED_SLUGS = ['search', 'access', 'request-access', 'feedback', 'sitemap', 'changes', 'pdf'];
+
     public const STATUSES = [
         'active' => 'Active',
         'deprecated' => 'Deprecated',
@@ -39,6 +52,8 @@ class System extends Model
         'summary',
         'description',
         'department_id',
+        'category_id',
+        'library_visibility',
         'criticality',
         'status',
         'url',
@@ -68,7 +83,7 @@ class System extends Model
         $slug = $base;
         $i = 2;
 
-        while (static::withTrashed()
+        while (in_array($slug, self::RESERVED_SLUGS, true) || static::withTrashed()
             ->where('organisation_id', $organisationId)
             ->where('slug', $slug)
             ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
@@ -93,6 +108,36 @@ class System extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(SystemCategory::class, 'category_id');
+    }
+
+    public function releases(): HasMany
+    {
+        return $this->hasMany(ManualRelease::class)->orderByDesc('published_at')->orderByDesc('id');
+    }
+
+    public function latestRelease(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(ManualRelease::class)->latestOfMany('published_at');
+    }
+
+    public function isInLibrary(): bool
+    {
+        return in_array($this->library_visibility, [self::LIBRARY_PUBLIC, self::LIBRARY_RESTRICTED], true);
+    }
+
+    /**
+     * Approved revisions that haven't been released in a version yet.
+     */
+    public function unreleasedRevisions()
+    {
+        return ManualSectionRevision::query()
+            ->whereNull('release_id')
+            ->whereIn('manual_section_id', ManualSection::withTrashed()->where('system_id', $this->id)->select('id'));
     }
 
     public function members(): HasMany

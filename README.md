@@ -1,12 +1,15 @@
 # WorkTrack Pro
 
-Work tracking for teams: daily plans with timers, activity logs, attendance (clock-in/out), recurring tasks, an internal inbox, HR letters, and a knowledge base of internal systems with manuals.
+Work tracking for teams: daily plans with timers, activity logs, attendance (clock-in/out), recurring tasks, an internal inbox, HR letters, a knowledge base of internal systems with manuals, and a public documentation library for those manuals.
 
 | Part | Technology | URL |
 |---|---|---|
-| Worker portal | Vue 3 + Pinia SPA, Sanctum API tokens | `/` |
+| Documentation library | Server-rendered Blade + Tailwind | `/` (default organisation), `/org/{slug}`, or an organisation's own domain |
+| Staff portal | Vue 3 + Pinia SPA, Sanctum API tokens | `/staff` |
 | Admin panel | Filament 5 | `/admin` |
 | API | Laravel 13, JSON, versioned | `/api/v1` |
+
+The staff portal used to live at `/`; old addresses such as `/login` and `/plans` redirect to `/staff/...`.
 
 ## Requirements
 
@@ -54,6 +57,18 @@ A super admin is created too; see `database/seeders/DatabaseSeeder.php`. Change 
 1. **Organisations → your organisation → Timezone.** "Today" for clock-in, plans, recurring tasks and the session close time follows this. New organisations default to UTC.
 2. **Configuration → Work Types.** Name your own types and choose which category each counts as (Direct, Indirect or Growth).
 3. **Knowledge → Systems.** Add your internal systems and their owners.
+4. **Documentation Library.** Set "In the library" on each system (Public, Restricted or Not in library), create categories, and fill in the library title and announcements under **Configuration → Organisation Settings**.
+
+## Documentation library
+
+Each organisation has a public library of its manuals, laid out like a vendor documentation site: products (systems) by category, a product page with its guides grouped by audience, a reader with a contents tree, search, and "What's changed" per version. (PDF download is only offered in the staff portal.)
+
+- **Addresses.** The default organisation (`DOCS_DEFAULT_ORGANISATION`, or the first active one) is served at `/`. Every organisation is also at `/org/{slug}`. A super admin can give an organisation its own domain (**Organisations → Documentation library address**, e.g. `docs.example.com`); point the domain's DNS at the server and make sure the web server answers for it.
+- **Who can read what.** *Public* manuals are open to everyone; *Restricted* manuals are listed but need a staff sign-in or an access code; *Not in library* manuals stay in the staff portal. Individual chapters can be restricted under **Knowledge → Manual Structure**.
+- **Audiences** (**Documentation Library → Audiences**) are groups of readers, e.g. *Teachers* or *Finance*. Mark chapters for one or more audiences under **Knowledge → Manual Structure → Who is it for…**; the chapter and everything under it can then only be read by staff and by access codes that open one of those audiences. Product pages list chapters as guide cards under "General" and each audience.
+- **Access codes** (**Documentation Library → Access Codes**) are for clients and other readers outside the staff. Each code opens chosen manuals, optionally including restricted chapters, and can expire or be turned off at any time. Readers can also ask for access from a locked page; requests arrive in the owners' inbox and under **Access Requests**.
+- **Versions.** Approved changes reach staff in the portal straight away. The library shows each manual **as of its last published version**: owners release changes with **Knowledge → Systems → Publish version** (minor or major, with a summary readers see), or tick **Publish to the library now** when approving an urgent fix. Archiving, moving and reordering sections apply to the library immediately.
+- **Staff** signed in to the portal can use **Open in library** to view a manual there with full access.
 
 ## Background jobs
 
@@ -89,6 +104,8 @@ Besides the standard Laravel settings, `.env` supports:
 |---|---|---|
 | `SANCTUM_EXPIRATION` | `10080` | Portal login lifetime in minutes (7 days) |
 | `QPDF_PATH` | `qpdf` | Path to the qpdf binary |
+| `DOCS_DEFAULT_ORGANISATION` | first active organisation | Slug of the organisation whose library is served at `/` |
+| `DOCS_CODE_SESSION_DAYS` | `30` | How long an access code stays active in a reader's browser |
 | `KNOWLEDGE_STALE_AFTER_DAYS` | `90` | When manual sections count as needing a re-check |
 | `KNOWLEDGE_MAX_IMAGE_KB` / `_PDF_KB` / `_DOCX_KB` | 5 MB / 50 MB / 20 MB | Upload limits for the knowledge base |
 
@@ -116,9 +133,9 @@ php artisan db:seed --class=RoleAndPermissionSeeder
 php artisan test
 ```
 
-Feature tests cover timers, clock-out and carry-over, authorization, timezones, work types, letters, the knowledge base API and the knowledge admin pages.
+Feature tests cover timers, clock-out and carry-over, authorization, timezones, work types, letters, the knowledge base API, the knowledge admin pages and the documentation library (addresses, access rules, codes, versions, search, feedback and its admin pages).
 
 ## Project notes
 
-- `implementation_plan_knowledge_base.md`: Knowledge & Readiness module plan and status (Phases 0–3 done)
+- `implementation_plan_knowledge_base.md`: Knowledge & Readiness module plan and status (Phases 0–3 and 3B done)
 - `implementation_plan_phase6.md`: earlier feature addendum plan (attendance, timers, recurring tasks, inbox, letters)

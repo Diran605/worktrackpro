@@ -24,8 +24,8 @@ api.interceptors.response.use(
         const isAuthCall = error.config?.url?.startsWith('/auth/login');
         if (error.response?.status === 401 && !isAuthCall) {
             localStorage.removeItem('access_token');
-            if (window.location.pathname !== '/login') {
-                window.location.assign('/login');
+            if (window.location.pathname !== '/staff/login') {
+                window.location.assign('/staff/login');
             }
         }
         return Promise.reject(error);

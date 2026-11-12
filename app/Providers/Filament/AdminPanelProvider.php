@@ -43,6 +43,7 @@ class AdminPanelProvider extends PanelProvider
                 'Communication',
                 'Letters',
                 'Knowledge',
+                'Documentation Library',
                 'Security',
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
@@ -71,7 +72,7 @@ class AdminPanelProvider extends PanelProvider
                 'portal' => \Filament\Navigation\MenuItem::make()
                     ->label('Back to Portal')
                     ->icon('heroicon-o-arrow-left')
-                    ->url('/')
+                    ->url('/staff')
                     ->openUrlInNewTab(false),
             ]);
     }

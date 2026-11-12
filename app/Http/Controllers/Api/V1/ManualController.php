@@ -9,6 +9,8 @@ use App\Models\ManualAsset;
 use App\Models\ManualSection;
 use App\Services\ManualService;
 use App\Support\ManualContent;
+use App\Models\System;
+use App\Support\DocsContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -42,6 +44,8 @@ class ManualController extends Controller
                 'title' => $node['section']->title,
                 'kind' => $node['section']->kind,
                 'depth' => $node['section']->depth,
+                'restricted' => $node['section']->isRestricted(),
+                'audiences' => $node['section']->audiences->pluck('name')->values(),
                 'read' => isset($readIds[$node['section']->id]),
                 'children' => $mapTree($node['children']),
             ], $nodes);
@@ -53,6 +57,8 @@ class ManualController extends Controller
             'data' => [
                 'system' => ['id' => $system->id, 'name' => $system->name, 'slug' => $system->slug],
                 'manual_version' => $system->manual_version,
+                'library' => $this->libraryInfo($system),
+                'unreleased_changes' => $request->user()->can('approve', $system) ? $system->unreleasedRevisions()->count() : null,
                 'tree' => $mapTree($this->manuals->publishedTree($system)),
                 'progress' => $progress,
                 'can' => [
@@ -84,6 +90,10 @@ class ManualController extends Controller
                 'number' => $section->number,
                 'title' => $section->title,
                 'kind' => $section->kind,
+                'restricted' => $section->isRestricted(),
+                'library_path' => $system->isInLibrary()
+                    ? DocsContext::pathOf(DocsContext::mainSite($system->organisation)->section($system, $section))
+                    : null,
                 'version' => $section->currentVersion(),
                 'body' => $section->kind === ManualSection::KIND_WRITTEN ? ManualContent::toDisplay($revision?->body) : null,
                 'file' => $section->kind === ManualSection::KIND_UPLOADED_PDF && $revision?->file_path ? [
@@ -104,6 +114,18 @@ class ManualController extends Controller
                 'next_id' => $index !== false && $index < $outline->count() - 1 ? $outline[$index + 1]->id : null,
             ],
         ]);
+    }
+
+    /**
+     * Where this manual is in the public documentation library (null path when it isn't).
+     */
+    private function libraryInfo(System $system): array
+    {
+        return [
+            'visibility' => $system->library_visibility,
+            'visibility_label' => System::LIBRARY_VISIBILITIES[$system->library_visibility] ?? $system->library_visibility,
+            'path' => $system->isInLibrary() ? DocsContext::pathOf(DocsContext::mainSite($system->organisation)->system($system)) : null,
+        ];
     }
 
     public function markRead(Request $request, string $slug, int $sectionId): JsonResponse

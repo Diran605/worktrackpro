@@ -87,7 +87,7 @@ class ManualSectionResource extends Resource
         $staleDays = (int) config('knowledge.stale_after_days');
 
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['system', 'currentRevision', 'verifiedBy']))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['system', 'currentRevision', 'verifiedBy', 'audiences']))
             ->defaultSort(fn (Builder $query) => $query->orderBy('system_id')->orderBy('sort_key'))
             ->paginated([25, 50, 100, 'all'])
             ->defaultPaginationPageOption(50)
@@ -112,6 +112,19 @@ class ManualSectionResource extends Resource
                 TextColumn::make('status')
                     ->badge()
                     ->color(fn ($state) => $state === ManualSection::STATUS_PUBLISHED ? 'success' : 'gray'),
+                TextColumn::make('visibility')
+                    ->label('Library')
+                    ->badge()
+                    ->icon(fn ($state) => $state === ManualSection::VISIBILITY_RESTRICTED ? 'heroicon-m-lock-closed' : null)
+                    ->formatStateUsing(fn ($state) => $state === ManualSection::VISIBILITY_RESTRICTED ? 'Restricted' : 'As the manual')
+                    ->color(fn ($state) => $state === ManualSection::VISIBILITY_RESTRICTED ? 'warning' : 'gray')
+                    ->tooltip('Restricted chapters (and everything under them) can only be read by staff and people whose access code includes restricted chapters.'),
+                TextColumn::make('audiences.name')
+                    ->label('For')
+                    ->badge()
+                    ->color('info')
+                    ->placeholder('Everyone')
+                    ->tooltip('Chapters meant for audiences (and everything under them) can only be read in the library by staff and by access codes that open one of those audiences.'),
             ])
             ->filters([
                 SelectFilter::make('system_id')
@@ -119,6 +132,15 @@ class ManualSectionResource extends Resource
                     ->relationship('system', 'name', fn (Builder $query) => auth()->user()->hasRole('super_admin')
                         ? $query
                         : $query->where('organisation_id', auth()->user()->organisation_id)),
+                SelectFilter::make('audiences')
+                    ->label('For audience')
+                    ->relationship('audiences', 'name', fn (Builder $query) => auth()->user()->hasRole('super_admin')
+                        ? $query
+                        : $query->where('docs_audiences.organisation_id', auth()->user()->organisation_id)),
+                SelectFilter::make('visibility')->label('Library')->options([
+                    ManualSection::VISIBILITY_INHERIT => 'As the manual',
+                    ManualSection::VISIBILITY_RESTRICTED => 'Restricted',
+                ]),
                 SelectFilter::make('status')->options([
                     ManualSection::STATUS_PUBLISHED => 'Published',
                     ManualSection::STATUS_ARCHIVED => 'Archived',
@@ -154,6 +176,47 @@ class ManualSectionResource extends Resource
                         ->action(fn (ManualSection $record) => self::run(
                             fn () => app(ManualService::class)->markVerified($record, auth()->user()),
                             'Marked as verified'
+                        )),
+                    Action::make('audiences')
+                        ->label('Who is it for…')
+                        ->icon('heroicon-o-user-group')
+                        ->modalHeading('Who is this part of the manual for?')
+                        ->modalDescription('In the documentation library, a chapter meant for audiences (and everything under it) can only be read by staff and by access codes that open one of them. On the product page it is listed under each audience. Leave empty for everyone.')
+                        ->schema(fn (ManualSection $record) => [
+                            Select::make('audience_ids')
+                                ->label('Audiences')
+                                ->multiple()
+                                ->options(fn () => \App\Models\DocsAudience::query()
+                                    ->where('organisation_id', $record->system->organisation_id)
+                                    ->orderBy('position')->orderBy('name')
+                                    ->pluck('name', 'id'))
+                                ->default($record->audiences->pluck('id')->all())
+                                ->helperText('Add audiences under Documentation Library > Audiences.'),
+                        ])
+                        ->action(fn (ManualSection $record, array $data) => self::run(function () use ($record, $data) {
+                            $allowed = \App\Models\DocsAudience::query()
+                                ->where('organisation_id', $record->system->organisation_id)
+                                ->whereIn('id', $data['audience_ids'] ?? [])
+                                ->pluck('id');
+                            $record->audiences()->sync($allowed);
+                        }, 'Saved')),
+                    Action::make('restrict')
+                        ->label('Make restricted')
+                        ->icon('heroicon-o-lock-closed')
+                        ->visible(fn (ManualSection $record) => $record->visibility !== ManualSection::VISIBILITY_RESTRICTED)
+                        ->requiresConfirmation()
+                        ->modalDescription('In the documentation library, this section and its sub-sections will only be readable by staff and by people whose access code includes restricted chapters. Staff in the portal are not affected.')
+                        ->action(fn (ManualSection $record) => self::run(
+                            fn () => $record->update(['visibility' => ManualSection::VISIBILITY_RESTRICTED]),
+                            'Section restricted'
+                        )),
+                    Action::make('unrestrict')
+                        ->label('Remove restriction')
+                        ->icon('heroicon-o-lock-open')
+                        ->visible(fn (ManualSection $record) => $record->visibility === ManualSection::VISIBILITY_RESTRICTED)
+                        ->action(fn (ManualSection $record) => self::run(
+                            fn () => $record->update(['visibility' => ManualSection::VISIBILITY_INHERIT]),
+                            'Restriction removed'
                         )),
                     Action::make('archive')
                         ->label('Archive')

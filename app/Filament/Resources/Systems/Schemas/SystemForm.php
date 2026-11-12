@@ -75,6 +75,35 @@ class SystemForm
                             ->rows(3),
                     ]),
 
+                Section::make('Documentation library')
+                    ->description('Whether this manual appears in the public documentation library, and where.')
+                    ->columns(2)
+                    ->schema([
+                        Select::make('library_visibility')
+                            ->label('In the library')
+                            ->options(System::LIBRARY_VISIBILITIES)
+                            ->default(System::LIBRARY_HIDDEN)
+                            ->required()
+                            ->helperText('Public: anyone can read it. Restricted: listed, but only staff and people with an access code can open it. Not in library: staff read it in the staff portal only.'),
+                        Select::make('category_id')
+                            ->label('Category')
+                            ->relationship(
+                                name: 'category',
+                                titleAttribute: 'name',
+                                modifyQueryUsing: fn (Builder $query) => self::scopeToOrganisation($query)->orderBy('position')->orderBy('name'),
+                            )
+                            ->searchable()
+                            ->preload()
+                            ->helperText('Groups systems on the library home page, e.g. "Finance" or "Customer service".')
+                            ->createOptionForm([
+                                TextInput::make('name')->required()->maxLength(100),
+                                Textarea::make('description')->rows(2)->maxLength(500),
+                            ])
+                            ->createOptionUsing(fn (array $data, ?System $record) => \App\Models\SystemCategory::create($data + [
+                                'organisation_id' => $record?->organisation_id ?? auth()->user()?->organisation_id,
+                            ])->getKey()),
+                    ]),
+
                 Section::make('People')
                     ->description('Owners and backup owners approve changes to this system\'s manual.')
                     ->schema([

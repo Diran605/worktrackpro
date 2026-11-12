@@ -16,6 +16,11 @@ class Organisation extends Model
     protected $fillable = [
         'name',
         'slug',
+        'docs_domain',
+        'docs_title',
+        'docs_tagline',
+        'docs_footer_links',
+        'docs_banners',
         'timezone',
         'is_active',
         'primary_color',
@@ -26,6 +31,8 @@ class Organisation extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'docs_footer_links' => 'array',
+        'docs_banners' => 'array',
     ];
 
     protected static function booted(): void
@@ -42,6 +49,21 @@ class Organisation extends Model
     public function localToday(): string
     {
         return \App\Support\LocalTime::today($this->id);
+    }
+
+    public function docsAudiences(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(DocsAudience::class)->orderBy('position')->orderBy('name');
+    }
+
+    public function systemCategories(): HasMany
+    {
+        return $this->hasMany(SystemCategory::class)->orderBy('position')->orderBy('name');
+    }
+
+    public function docsTitle(): string
+    {
+        return $this->docs_title ?: "{$this->name} Documentation";
     }
 
     public function departments(): HasMany

@@ -37,16 +37,24 @@ class ManualExportService
      *
      * @param array<int>|null $sectionIds
      * @param array<string> $appendices
+     * @param array<int> $exclude sections to leave out, with everything under them (the docs library
+     *                            passes the restricted chapters a visitor can't open)
+     * @param User|null $user null for anonymous visitors of the documentation library
+     * @param bool $released the documentation library's view: each section as of the last published version
      */
-    public function request(System $system, User $user, ?array $sectionIds, array $appendices = []): ManualExport
+    public function request(System $system, ?User $user, ?array $sectionIds, array $appendices = [], array $exclude = [], bool $released = false): ManualExport
     {
-        $sections = $this->resolveSections($system, $sectionIds);
+        $exclude = collect($exclude)->map(fn ($id) => (int) $id)->unique()->sort()->values()->all();
+        $sections = $this->resolveSections($system, $sectionIds, $exclude, $released);
 
         if ($sections->isEmpty()) {
             throw ValidationException::withMessages(['section_ids' => 'This manual has no published sections yet.']);
         }
 
-        $options = ['appendices' => collect($appendices)->intersect(ManualExport::APPENDICES)->unique()->sort()->values()->all()];
+        $options = [
+            'appendices' => collect($appendices)->intersect(ManualExport::APPENDICES)->unique()->sort()->values()->all(),
+            'exclude' => $exclude,
+        ] + ($released ? ['released' => true] : []);
         $selection = $sectionIds ? collect($sectionIds)->map(fn ($id) => (int) $id)->unique()->sort()->values()->all() : null;
         $fingerprint = $this->fingerprint($system, $sections, $selection, $options);
 
@@ -68,7 +76,7 @@ class ManualExportService
 
         $export = ManualExport::create([
             'system_id' => $system->id,
-            'requested_by' => $user->id,
+            'requested_by' => $user?->id,
             'manual_version' => $system->manual_version,
             'fingerprint' => $fingerprint,
             'section_ids' => $selection,
@@ -99,7 +107,7 @@ class ManualExportService
         $workDir = null;
 
         try {
-            $sections = $this->resolveSections($system, $export->section_ids);
+            $sections = $this->resolveSections($system, $export->section_ids, $export->options['exclude'] ?? [], (bool) ($export->options['released'] ?? false));
             $result = $this->renderer->render($system, $sections, $export->options ?? [], !$export->isFullManual());
             $workDir = dirname($result['path']);
 
@@ -141,9 +149,16 @@ class ManualExportService
      *
      * @return Collection<int, ManualSection>
      */
-    public function resolveSections(System $system, ?array $sectionIds): Collection
+    public function resolveSections(System $system, ?array $sectionIds, array $exclude = [], bool $released = false): Collection
     {
-        $outline = $this->manuals->publishedOutline($system);
+        $outline = $released ? $this->manuals->libraryOutline($system) : $this->manuals->publishedOutline($system);
+
+        if ($exclude !== []) {
+            $excludedKeys = $outline->whereIn('id', $exclude)->pluck('sort_key');
+            $outline = $outline->reject(fn (ManualSection $s) => $excludedKeys->contains(
+                fn ($key) => $s->sort_key === $key || str_starts_with((string) $s->sort_key, $key . '.')
+            ))->values();
+        }
 
         if (empty($sectionIds)) {
             return $outline;
@@ -179,7 +194,7 @@ class ManualExportService
                 $system->support_contact, $system->escalation_notes, $system->updated_at?->timestamp],
             'members' => $system->members()->orderBy('id')->get(['user_id', 'role'])->toArray(),
             'letterhead' => [$letterhead?->id, $letterhead?->updated_at?->timestamp],
-            'sections' => $sections->map(fn (ManualSection $s) => [$s->id, $s->number, $s->title, $s->kind, $s->current_revision_id])->all(),
+            'sections' => $sections->map(fn (ManualSection $s) => [$s->id, $s->number, $s->title, $s->kind, $s->currentRevision?->id])->all(),
             'selection' => $selection,
             'options' => $options,
             'qpdf' => Qpdf::available(),

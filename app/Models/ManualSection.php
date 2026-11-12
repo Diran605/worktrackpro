@@ -23,6 +23,9 @@ class ManualSection extends Model
     public const STATUS_PUBLISHED = 'published';
     public const STATUS_ARCHIVED = 'archived';
 
+    public const VISIBILITY_INHERIT = 'inherit';
+    public const VISIBILITY_RESTRICTED = 'restricted';
+
     protected $fillable = [
         'system_id',
         'parent_id',
@@ -31,8 +34,10 @@ class ManualSection extends Model
         'sort_key',
         'depth',
         'title',
+        'slug',
         'kind',
         'status',
+        'visibility',
         'current_revision_id',
         'last_verified_at',
         'last_verified_by',
@@ -42,6 +47,47 @@ class ManualSection extends Model
     protected $casts = [
         'last_verified_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        // A readable, stable address for the documentation library (kept when the title changes).
+        static::creating(function (ManualSection $section) {
+            if (blank($section->slug)) {
+                $section->slug = static::uniqueSlug((int) $section->system_id, (string) $section->title);
+            }
+        });
+    }
+
+    /** Addresses used by the library's own pages under /docs/{system}/… */
+    public const RESERVED_SLUGS = ['changes', 'pdf', 'request-access'];
+
+    public static function uniqueSlug(int $systemId, string $title): string
+    {
+        $base = \Illuminate\Support\Str::slug($title) ?: 'section';
+        $slug = $base;
+        $i = 2;
+
+        while (in_array($slug, self::RESERVED_SLUGS, true)
+            || static::withTrashed()->where('system_id', $systemId)->where('slug', $slug)->exists()) {
+            $slug = "{$base}-{$i}";
+            $i++;
+        }
+
+        return $slug;
+    }
+
+    public function isRestricted(): bool
+    {
+        return $this->visibility === self::VISIBILITY_RESTRICTED;
+    }
+
+    /** Who the chapter is meant for in the documentation library (none = everyone who can open the manual). */
+    public function audiences(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(DocsAudience::class, 'manual_section_audience', 'manual_section_id', 'audience_id')
+            ->orderBy('position')
+            ->orderBy('name');
+    }
 
     public function system(): BelongsTo
     {
@@ -97,5 +143,11 @@ class ManualSection extends Model
         }
 
         return $ids;
+    }
+
+    /** Audit entries belong to the system's organisation. */
+    public function auditOrganisationId(): ?int
+    {
+        return System::withTrashed()->whereKey($this->system_id)->value('organisation_id');
     }
 }
