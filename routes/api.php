@@ -37,6 +37,9 @@ Route::prefix('v1')->group(function () {
     });
 
     Route::middleware(['auth:sanctum', \App\Http\Middleware\CheckOrganisationActive::class])->group(function () {
+        // Staff dashboard cards for the organisation's modules (inbox, attendance, knowledge, library).
+        Route::get('dashboard/overview', \App\Http\Controllers\Api\V1\DashboardOverviewController::class);
+
         // Modules: each group below belongs to a module the organisation must have (403 otherwise).
         Route::get('dashboard/stats/weekly', [DashboardController::class, 'weeklyStats'])->middleware('module:work_tracking');
 

@@ -81,6 +81,107 @@
             </div>
         </div>
 
+
+        <!-- Cards for the organisation's modules (inbox always) -->
+        <div v-if="overview" class="mb-8 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <!-- Inbox -->
+            <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-gray-900">Inbox</h3>
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
+                          :class="overview.inbox.unread ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'">
+                        {{ overview.inbox.unread ? `${overview.inbox.unread} unread` : 'All read' }}
+                    </span>
+                </div>
+                <ul v-if="overview.inbox.latest.length" class="space-y-2 flex-1">
+                    <li v-for="m in overview.inbox.latest" :key="m.id" class="text-sm">
+                        <router-link :to="{ name: 'Inbox' }" class="block hover:bg-gray-50 rounded-lg px-2 py-1 -mx-2">
+                            <span class="block truncate" :class="m.read ? 'text-gray-600' : 'font-semibold text-gray-900'">{{ m.subject }}</span>
+                            <span class="text-xs text-gray-400">{{ m.from }} · {{ formatDay(m.at) }}</span>
+                        </router-link>
+                    </li>
+                </ul>
+                <p v-else class="text-sm text-gray-500 flex-1">No messages yet.</p>
+                <router-link :to="{ name: 'Inbox' }" class="mt-3 text-sm font-semibold text-teal-700 hover:underline">Open inbox →</router-link>
+            </div>
+
+            <!-- Attendance: this week -->
+            <div v-if="overview.attendance" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                <h3 class="font-bold text-gray-900 mb-3">Attendance this week</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <div class="text-2xl font-bold text-gray-900">{{ formatMins(overview.attendance.week_minutes) }}</div>
+                        <div class="text-xs text-gray-500">worked</div>
+                    </div>
+                    <div>
+                        <div class="text-2xl font-bold text-gray-900">{{ overview.attendance.days_present }}</div>
+                        <div class="text-xs text-gray-500">{{ overview.attendance.days_present === 1 ? 'day' : 'days' }} present</div>
+                    </div>
+                </div>
+                <p class="mt-4 text-sm text-gray-600">
+                    <template v-if="overview.attendance.today_clock_in">Today you clocked in at <span class="font-semibold">{{ formatTime(overview.attendance.today_clock_in) }}</span>.</template>
+                    <template v-else>You haven't clocked in today.</template>
+                </p>
+            </div>
+
+            <!-- Knowledge base -->
+            <template v-if="overview.knowledge">
+                <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col">
+                    <h3 class="font-bold text-gray-900 mb-3">Continue reading</h3>
+                    <ul v-if="overview.knowledge.continue_reading.length" class="space-y-3 flex-1">
+                        <li v-for="m in overview.knowledge.continue_reading" :key="m.slug">
+                            <router-link :to="m.next_section_id ? { name: 'ManualReader', params: { slug: m.slug, sectionId: m.next_section_id } } : { name: 'SystemDetail', params: { slug: m.slug } }"
+                                         class="block group">
+                                <div class="flex justify-between text-sm">
+                                    <span class="font-medium text-gray-900 group-hover:text-teal-700">{{ m.name }}</span>
+                                    <span class="text-gray-500">{{ m.read }}/{{ m.total }}</span>
+                                </div>
+                                <div class="mt-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                    <div class="h-full bg-teal-500 rounded-full" :style="{ width: m.percent + '%' }"></div>
+                                </div>
+                            </router-link>
+                        </li>
+                    </ul>
+                    <p v-else class="text-sm text-gray-500 flex-1">You're up to date with every manual.</p>
+                    <router-link :to="{ name: 'Knowledge' }" class="mt-3 text-sm font-semibold text-teal-700 hover:underline">All manuals →</router-link>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col">
+                    <h3 class="font-bold text-gray-900 mb-3">My contributions</h3>
+                    <div class="grid grid-cols-3 gap-2 text-center flex-1">
+                        <div class="rounded-xl bg-gray-50 py-3">
+                            <div class="text-xl font-bold text-gray-900">{{ overview.knowledge.my_contributions.drafts }}</div>
+                            <div class="text-xs text-gray-500">drafts</div>
+                        </div>
+                        <div class="rounded-xl bg-amber-50 py-3">
+                            <div class="text-xl font-bold text-amber-700">{{ overview.knowledge.my_contributions.waiting }}</div>
+                            <div class="text-xs text-amber-700">waiting for approval</div>
+                        </div>
+                        <div class="rounded-xl py-3" :class="overview.knowledge.my_contributions.sent_back ? 'bg-red-50' : 'bg-gray-50'">
+                            <div class="text-xl font-bold" :class="overview.knowledge.my_contributions.sent_back ? 'text-red-700' : 'text-gray-900'">{{ overview.knowledge.my_contributions.sent_back }}</div>
+                            <div class="text-xs" :class="overview.knowledge.my_contributions.sent_back ? 'text-red-700' : 'text-gray-500'">sent back to you</div>
+                        </div>
+                    </div>
+                    <p v-if="overview.knowledge.to_review" class="mt-3 text-sm text-amber-700">
+                        {{ overview.knowledge.to_review }} {{ overview.knowledge.to_review === 1 ? 'change by someone else is' : 'changes by others are' }} waiting for your review in the admin panel (Manual Approvals).
+                    </p>
+                    <router-link :to="{ name: 'MyContributions' }" class="mt-3 text-sm font-semibold text-teal-700 hover:underline">My contributions →</router-link>
+                </div>
+            </template>
+
+            <!-- Documentation library (owners) -->
+            <div v-if="overview.library" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                <h3 class="font-bold text-gray-900 mb-1">Not in the library yet</h3>
+                <p class="text-xs text-gray-500 mb-3">Approved changes readers can't see until you publish a version (admin panel › Knowledge › Systems).</p>
+                <ul class="space-y-2">
+                    <li v-for="p in overview.library" :key="p.slug" class="flex items-center justify-between text-sm">
+                        <span><span class="font-medium text-gray-900">{{ p.name }}</span> <span class="text-amber-700">· {{ p.waiting }} {{ p.waiting === 1 ? 'change' : 'changes' }}</span></span>
+                        <button @click="openInLibrary(p.library_path)" class="text-teal-700 font-semibold hover:underline">Open in library</button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
         <template v-if="hasWork">
 
         <!-- Filters / Week Selector -->
@@ -182,6 +283,7 @@ import { useAuthStore } from '../stores/auth';
 import { useSessionStore } from '../stores/session';
 import api from '../lib/axios';
 import CarryOverModal from '../components/CarryOverModal.vue';
+import { openInLibrary } from '../lib/docsLink';
 
 const authStore = useAuthStore();
 const sessionStore = useSessionStore();
@@ -197,6 +299,18 @@ const hasAttendance = computed(() => authStore.hasModule('attendance'));
 // Clocking in is tied to plans and timers (both modules, and the organisation links them).
 const linked = computed(() => !!authStore.user?.attendance_linked);
 const unlocked = computed(() => !linked.value || sessionStore.isClockedIn);
+
+// Cards for the organisation's modules (inbox, attendance, knowledge, library).
+const overview = ref(null);
+const fetchOverview = async () => {
+    try {
+        overview.value = (await api.get('/dashboard/overview')).data.data;
+    } catch (e) {
+        console.error('Failed to load the dashboard overview', e);
+    }
+};
+const formatDay = (iso) => iso ? new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '';
+const formatTime = (iso) => iso ? new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '';
 
 const isCurrentWeek = computed(() => currentOffset.value === 0);
 
@@ -248,6 +362,7 @@ const getPercentage = (value, total) => {
 };
 
 onMounted(() => {
+    fetchOverview();
     if (hasAttendance.value) sessionStore.fetchCurrentSession();
     if (hasWork.value) {
         sessionStore.fetchPendingCarryOvers();
@@ -259,6 +374,7 @@ onMounted(() => {
 
 const handleClockIn = async () => {
     await sessionStore.clockIn();
+    fetchOverview();
 };
 
 const handleClockOut = async () => {
