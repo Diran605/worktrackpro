@@ -24,8 +24,13 @@ use App\Models\Role;
 
 class RoleResource extends Resource
 {
-    // canEdit()/canDelete() below are enforced on the pages too, not just used to hide buttons.
-    use \App\Filament\Concerns\EnforcesRecordAccess;
+    // View / Add / Edit / Delete permissions ("roles.view" …), also enforced on the pages.
+    use \App\Filament\Concerns\HasCrudPermissions;
+
+    public static function permissionEntity(): string
+    {
+        return 'roles';
+    }
 
     protected static ?string $model = Role::class;
 
@@ -35,16 +40,24 @@ class RoleResource extends Resource
 
     protected static ?string $navigationLabel = 'Roles & Permissions';
 
-    public static function canViewAny(): bool
-    {
-        return auth()->user()?->can(Permissions::MANAGE_ROLES) ?? false;
-    }
-
     /**
      * Core roles are shared by every organisation, so only a super admin may change them.
      * Organisation admins manage their own organisation's custom roles.
      */
     public static function canEdit(Model $record): bool
+    {
+        return static::allowsAction('update') && static::mayChange($record);
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return static::allowsAction('delete')
+            && !in_array($record->name, Permissions::CORE_ROLES, true)
+            && static::mayChange($record);
+    }
+
+    /** Is this role one the signed-in user may change at all (permissions aside)? */
+    private static function mayChange(Model $record): bool
     {
         $user = auth()->user();
 
@@ -60,10 +73,6 @@ class RoleResource extends Resource
             && $record->organisation_id === $user?->organisation_id;
     }
 
-    public static function canDelete(Model $record): bool
-    {
-        return !in_array($record->name, Permissions::CORE_ROLES, true) && static::canEdit($record);
-    }
 
     /**
      * Super admins see every role; organisation admins see core roles plus their own custom roles.
@@ -101,33 +110,85 @@ class RoleResource extends Resource
      * Permission groups shown on the form: those of modules the organisation has, and only the
      * permissions the current user may hand out.
      *
-     * @return array<string, array{label: string, description: string, permissions: array<string, array{0: string, 1: string}>}>
+     * @return array<string, array{label: string, description: string, permissions: array<string, array{0: string, 1: string}>, lists: array<string, array{label: string, description: string, actions: array<string, string>}>}>
      */
     public static function visibleGroups(): array
     {
-        $grantable = static::grantablePermissionNames();
+        $grantable = array_flip(static::grantablePermissionNames());
 
         return collect(Permissions::GROUPS)
             ->filter(fn (array $group) => $group['module'] === null || \App\Support\Modules::allows($group['module']))
-            ->map(fn (array $group) => ['permissions' => array_intersect_key($group['permissions'], array_flip($grantable))] + $group)
-            ->filter(fn (array $group) => $group['permissions'] !== [])
+            ->map(function (array $group) use ($grantable) {
+                $lists = collect($group['lists'])
+                    ->mapWithKeys(fn (string $entity) => [$entity => [
+                        'label' => Permissions::ENTITIES[$entity][0],
+                        'description' => Permissions::ENTITIES[$entity][1],
+                        'actions' => collect(Permissions::ACTIONS)
+                            ->filter(fn ($label, $action) => isset($grantable[Permissions::crud($entity, $action)]))
+                            ->all(),
+                    ]])
+                    ->filter(fn (array $list) => $list['actions'] !== [])
+                    ->all();
+
+                return ['permissions' => array_intersect_key($group['permissions'], $grantable), 'lists' => $lists] + $group;
+            })
+            ->filter(fn (array $group) => $group['permissions'] !== [] || $group['lists'] !== [])
             ->all();
     }
 
     public static function form(Schema $schema): Schema
     {
-        $groups = collect(static::visibleGroups())->map(
-            fn (array $group, string $key) => Section::make($group['label'])
+        $groups = collect(static::visibleGroups())->map(function (array $group, string $key) {
+            $fields = [];
+
+            // Lists: one row of View / Add / Edit / Delete each.
+            foreach ($group['lists'] as $entity => $list) {
+                $fields[] = CheckboxList::make("crud_{$entity}")
+                    ->label($list['label'])
+                    ->helperText($list['description'])
+                    ->options($list['actions'])
+                    ->columns(4)
+                    ->live()
+                    // Adding, editing or deleting needs seeing the list too.
+                    ->afterStateUpdated(fn ($state, $set) => $set("crud_{$entity}", static::withView((array) $state, $list['actions'])));
+            }
+
+            // Single permissions.
+            if ($group['permissions'] !== []) {
+                $fields[] = CheckboxList::make("perm_{$key}")
+                    ->hiddenLabel()
+                    ->options(collect($group['permissions'])->map(fn ($p) => $p[0])->all())
+                    ->descriptions(collect($group['permissions'])->map(fn ($p) => $p[1])->all());
+            }
+
+            return Section::make($group['label'])
                 ->description($group['description'])
                 ->compact()
-                ->schema([
-                    CheckboxList::make("perm_{$key}")
-                        ->hiddenLabel()
-                        ->options(collect($group['permissions'])->map(fn ($p) => $p[0])->all())
-                        ->descriptions(collect($group['permissions'])->map(fn ($p) => $p[1])->all())
-                        ->bulkToggleable(),
+                ->headerActions([
+                    \Filament\Actions\Action::make("all_{$key}")
+                        ->label('Select all')
+                        ->link()
+                        ->action(function ($set) use ($group, $key) {
+                            foreach ($group['lists'] as $entity => $list) {
+                                $set("crud_{$entity}", array_keys($list['actions']));
+                            }
+                            if ($group['permissions'] !== []) {
+                                $set("perm_{$key}", array_keys($group['permissions']));
+                            }
+                        }),
+                    \Filament\Actions\Action::make("none_{$key}")
+                        ->label('Clear')
+                        ->link()
+                        ->color('gray')
+                        ->action(function ($set) use ($group, $key) {
+                            foreach (array_keys($group['lists']) as $entity) {
+                                $set("crud_{$entity}", []);
+                            }
+                            $set("perm_{$key}", []);
+                        }),
                 ])
-        )->values()->all();
+                ->schema($fields);
+        })->values()->all();
 
         return $schema
             ->columns(2)
@@ -148,6 +209,16 @@ class RoleResource extends Resource
             ]);
     }
 
+    /** Ticking Add, Edit or Delete also ticks View (when the user may grant it). */
+    private static function withView(array $actions, array $available): array
+    {
+        if (array_diff($actions, ['view']) !== [] && isset($available['view']) && !in_array('view', $actions, true)) {
+            $actions[] = 'view';
+        }
+
+        return array_values(array_intersect(array_keys(Permissions::ACTIONS), $actions));
+    }
+
     /**
      * Save the ticked permissions. Permissions the editor can't see (another module, or ones they
      * don't hold themselves) are left as they were.
@@ -155,24 +226,40 @@ class RoleResource extends Resource
     public static function syncPermissions(Role $role, array $data): void
     {
         $groups = collect(static::visibleGroups());
-        $shown = $groups->flatMap(fn ($g) => array_keys($g['permissions']))->all();
-        $ticked = $groups->keys()
-            ->flatMap(fn ($key) => (array) ($data["perm_{$key}"] ?? []))
-            ->intersect($shown)
-            ->all();
+
+        $shown = $groups->flatMap(fn ($g) => [
+            ...array_keys($g['permissions']),
+            ...collect($g['lists'])->flatMap(fn ($list, $entity) => array_map(fn ($a) => Permissions::crud($entity, $a), array_keys($list['actions'])))->all(),
+        ])->all();
+
+        $ticked = $groups->flatMap(fn ($g, $key) => [
+            ...(array) ($data["perm_{$key}"] ?? []),
+            ...collect($g['lists'])->flatMap(fn ($list, $entity) => array_map(
+                fn ($a) => Permissions::crud($entity, $a),
+                static::withView((array) ($data["crud_{$entity}"] ?? []), $list['actions']),
+            ))->all(),
+        ])->intersect($shown)->all();
+
         $kept = $role->permissions()->pluck('name')->diff($shown)->all();
 
         $role->syncPermissions(array_values(array_unique([...$kept, ...$ticked])));
     }
 
-    /** Form state for an existing role: perm_<group> => ticked permissions. */
+    /** Form state for an existing role: perm_<group> and crud_<list> => ticked permissions/actions. */
     public static function permissionState(Role $role): array
     {
-        $has = $role->permissions()->pluck('name')->all();
+        $has = array_flip($role->permissions()->pluck('name')->all());
+        $state = [];
 
-        return collect(static::visibleGroups())
-            ->mapWithKeys(fn ($g, $key) => ["perm_{$key}" => array_values(array_intersect(array_keys($g['permissions']), $has))])
-            ->all();
+        foreach (static::visibleGroups() as $key => $group) {
+            $state["perm_{$key}"] = array_values(array_filter(array_keys($group['permissions']), fn ($p) => isset($has[$p])));
+
+            foreach ($group['lists'] as $entity => $list) {
+                $state["crud_{$entity}"] = array_values(array_filter(array_keys($list['actions']), fn ($a) => isset($has[Permissions::crud($entity, $a)])));
+            }
+        }
+
+        return $state;
     }
 
     public static function table(Table $table): Table
@@ -200,10 +287,17 @@ class RoleResource extends Resource
                     }),
                 TextColumn::make('areas')
                     ->label('Can work with')
-                    ->state(fn (Role $record) => collect(Permissions::GROUPS)
-                        ->filter(fn ($g) => $record->permissions->pluck('name')->intersect(array_keys($g['permissions']))->isNotEmpty())
-                        ->pluck('label')
-                        ->all())
+                    ->state(function (Role $record) {
+                        $names = $record->permissions->pluck('name');
+
+                        return collect(Permissions::GROUPS)
+                            ->filter(fn ($g) => $names->intersect([
+                                ...array_keys($g['permissions']),
+                                ...collect($g['lists'])->flatMap(fn ($entity) => Permissions::crudAll($entity))->all(),
+                            ])->isNotEmpty())
+                            ->pluck('label')
+                            ->all();
+                    })
                     ->badge()
                     ->color('gray')
                     ->placeholder('Nothing yet'),

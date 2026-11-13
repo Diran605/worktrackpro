@@ -31,7 +31,13 @@ class SystemCategoryResource extends Resource
         return \App\Support\Modules::DOCS_LIBRARY;
     }
 
-    use \App\Filament\Concerns\EnforcesRecordAccess;
+    // View / Add / Edit / Delete permissions ("systems.view" …), also enforced on the pages.
+    use \App\Filament\Concerns\HasCrudPermissions;
+
+    public static function permissionEntity(): string
+    {
+        return 'systems';
+    }
 
     protected static ?string $model = SystemCategory::class;
 
@@ -45,28 +51,19 @@ class SystemCategoryResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    public static function canViewAny(): bool
-    {
-        $user = auth()->user();
-
-        return $user && ($user->hasRole('super_admin') || $user->can(Permissions::MANAGE_SYSTEMS));
-    }
-
-    public static function canCreate(): bool
-    {
-        return static::canViewAny();
-    }
 
     public static function canEdit(Model $record): bool
     {
         $user = auth()->user();
 
-        return static::canViewAny() && ($user->hasRole('super_admin') || $record->organisation_id === $user->organisation_id);
+        return static::allowsAction('update') && ($user->hasRole('super_admin') || $record->organisation_id === $user->organisation_id);
     }
 
     public static function canDelete(Model $record): bool
     {
-        return static::canEdit($record);
+        $user = auth()->user();
+
+        return static::allowsAction('delete') && ($user->hasRole('super_admin') || $record->organisation_id === $user->organisation_id);
     }
 
     public static function getEloquentQuery(): Builder

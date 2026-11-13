@@ -17,6 +17,14 @@ use Illuminate\Database\Eloquent\Builder;
 
 class TaskTemplateResource extends Resource
 {
+    // View / Add / Edit / Delete permissions ("task_templates.view" …), also enforced on the pages.
+    use \App\Filament\Concerns\HasCrudPermissions;
+
+    public static function permissionEntity(): string
+    {
+        return 'task_templates';
+    }
+
     // Part of a module: hidden (and 403) for organisations that don't have it.
     use \App\Filament\Concerns\BelongsToModule;
 
@@ -33,10 +41,6 @@ class TaskTemplateResource extends Resource
 
     protected static ?string $navigationLabel = 'Recurring Task Templates';
 
-    public static function canViewAny(): bool
-    {
-        return auth()->user()?->hasPermissionTo('manage_task_templates') ?? false;
-    }
 
     public static function form(Schema $schema): Schema
     {

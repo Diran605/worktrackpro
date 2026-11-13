@@ -22,7 +22,7 @@ protected static string $resource = RoleResource::class;
     protected function mutateFormDataBeforeSave(array $data): array
     {
         // Permissions are saved separately (grouped checklists).
-        return collect($data)->reject(fn ($v, $k) => str_starts_with($k, 'perm_'))->all();
+        return collect($data)->reject(fn ($v, $k) => (str_starts_with($k, 'perm_') || str_starts_with($k, 'crud_')))->all();
     }
 
     protected function afterSave(): void

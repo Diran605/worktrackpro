@@ -27,8 +27,13 @@ class SystemResource extends Resource
         return \App\Support\Modules::KNOWLEDGE;
     }
 
-    // canEdit()/canDelete() below are enforced on the pages too, not just used to hide buttons.
-    use \App\Filament\Concerns\EnforcesRecordAccess;
+    // View / Add / Edit / Delete permissions ("systems.view" …), also enforced on the pages.
+    use \App\Filament\Concerns\HasCrudPermissions;
+
+    public static function permissionEntity(): string
+    {
+        return 'systems';
+    }
 
     protected static ?string $model = System::class;
 
@@ -47,12 +52,12 @@ class SystemResource extends Resource
     {
         $user = auth()->user();
 
-        return $user && ($user->can(Permissions::MANAGE_SYSTEMS) || $user->ownedSystemIds() !== []);
+        return $user && (static::allowsAction('view') || $user->ownedSystemIds() !== []);
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->can(Permissions::MANAGE_SYSTEMS) ?? false;
+        return static::allowsAction('create');
     }
 
     public static function canEdit(Model $record): bool
@@ -95,7 +100,7 @@ class SystemResource extends Resource
 
         $query->where('organisation_id', $user?->organisation_id);
 
-        if (!$user?->can(Permissions::MANAGE_SYSTEMS)) {
+        if (!$user?->can(Permissions::crud('systems', 'view'))) {
             $query->whereIn('id', $user?->ownedSystemIds() ?? []);
         }
 

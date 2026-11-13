@@ -18,16 +18,20 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class UserResource extends Resource
 {
+    // View / Add / Edit / Delete permissions ("users.view" …), also enforced on the pages.
+    use \App\Filament\Concerns\HasCrudPermissions;
+
+    public static function permissionEntity(): string
+    {
+        return 'users';
+    }
+
     protected static ?string $model = User::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;
 
     protected static \UnitEnum|string|null $navigationGroup = 'Management';
 
-    public static function canViewAny(): bool
-    {
-        return auth()->user()?->hasPermissionTo('manage_users') ?? false;
-    }
 
     public static function form(Schema $schema): Schema
     {
@@ -68,7 +72,7 @@ class UserResource extends Resource
             return $query; // Super_Admin can see all users globally
         }
         
-        if ($user->hasPermissionTo('manage_users') && !$user->hasRole('super_admin')) {
+        if ($user->can(\App\Support\Permissions::crud('users', 'view')) && !$user->hasRole('super_admin')) {
             return $query->where('organisation_id', $user->organisation_id)
                          ->where('department_id', $user->department_id);
         }

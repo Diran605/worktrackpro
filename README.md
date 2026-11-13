@@ -139,7 +139,7 @@ All timestamps are stored in UTC. Calendar dates (a plan's date, a session's dat
 
 ## Permissions
 
-Permission names live in `App\Support\Permissions`; always use the constants. Roles:
+Permission names live in `App\Support\Permissions`; always use the constants (and `Permissions::crud('users', 'create')` for lists). Lists people manage (users, departments, roles, work types, clients & projects, recurring task templates, letterheads, systems) have separate **View / Add / Edit / Delete** permissions named `<list>.<action>`, e.g. `users.create`; admin pages enforce each one, also when an address is typed. The Roles page groups permissions by area in plain words. Roles:
 
 - **worker**: portal only
 - **admin**: manages their department

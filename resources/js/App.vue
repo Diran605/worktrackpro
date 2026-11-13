@@ -204,7 +204,7 @@ const canAccessAdmin = computed(() => !!authStore.user?.can_access_admin);
 const isAdmin = computed(() => {
     const roles = authStore.user?.roles || [];
     const perms = authStore.user?.permissions || [];
-    return roles.includes('super_admin') || perms.includes('manage_users') || perms.includes('view_team_stats');
+    return roles.includes('super_admin') || perms.includes('users.view') || perms.includes('view_team_stats');
 });
 
 const orgName = computed(() => authStore.user?.organisation?.name || 'WorkTrack Pro');

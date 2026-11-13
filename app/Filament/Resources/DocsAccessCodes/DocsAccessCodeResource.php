@@ -44,7 +44,13 @@ class DocsAccessCodeResource extends Resource
         return \App\Support\Modules::DOCS_LIBRARY;
     }
 
-    use \App\Filament\Concerns\EnforcesRecordAccess;
+    // View / Add / Edit / Delete permissions ("systems.view" …), also enforced on the pages.
+    use \App\Filament\Concerns\HasCrudPermissions;
+
+    public static function permissionEntity(): string
+    {
+        return 'systems';
+    }
 
     protected static ?string $model = DocsAccessCode::class;
 
@@ -58,26 +64,15 @@ class DocsAccessCodeResource extends Resource
 
     protected static ?int $navigationSort = 3;
 
-    public static function canViewAny(): bool
-    {
-        $user = auth()->user();
-
-        return $user && ($user->hasRole('super_admin') || $user->can(Permissions::MANAGE_SYSTEMS));
-    }
-
-    public static function canCreate(): bool
-    {
-        return static::canViewAny();
-    }
 
     public static function canEdit(Model $record): bool
     {
-        return static::canViewAny() && static::ownsRecord($record);
+        return static::allowsAction('update') && static::ownsRecord($record);
     }
 
     public static function canDelete(Model $record): bool
     {
-        return static::canEdit($record);
+        return static::allowsAction('delete') && static::ownsRecord($record);
     }
 
     private static function ownsRecord(Model $record): bool

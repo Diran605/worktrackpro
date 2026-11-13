@@ -17,6 +17,14 @@ use Illuminate\Database\Eloquent\Builder;
 
 class WorkTypeResource extends Resource
 {
+    // View / Add / Edit / Delete permissions ("work_types.view" …), also enforced on the pages.
+    use \App\Filament\Concerns\HasCrudPermissions;
+
+    public static function permissionEntity(): string
+    {
+        return 'work_types';
+    }
+
     // Part of a module: hidden (and 403) for organisations that don't have it.
     use \App\Filament\Concerns\BelongsToModule;
 
@@ -31,10 +39,6 @@ class WorkTypeResource extends Resource
 
     protected static \UnitEnum|string|null $navigationGroup = 'Configuration';
 
-    public static function canViewAny(): bool
-    {
-        return auth()->user()?->hasPermissionTo('manage_work_types') ?? false;
-    }
 
     public static function form(Schema $schema): Schema
     {
