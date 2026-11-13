@@ -51,16 +51,29 @@ class OrganisationSettingForm
                     ]),
 
                 Section::make('Attendance & timers')
+                    ->visible(fn ($record) => array_intersect(
+                        \App\Support\Modules::enabledFor($record?->organisation_id ?? auth()->user()?->organisation_id),
+                        [\App\Support\Modules::ATTENDANCE, \App\Support\Modules::WORK_TRACKING],
+                    ) !== [])
                     ->description('Safety nets for when people forget to clock out or stop a timer.')
                     ->columns(2)
                     ->schema([
+                        \Filament\Forms\Components\Toggle::make('link_attendance_to_work')
+                            ->label('Link attendance to work tracking')
+                            ->visible(fn ($record) => \App\Support\Modules::organisationHas($record?->organisation_id ?? auth()->user()?->organisation_id, \App\Support\Modules::ATTENDANCE)
+                                && \App\Support\Modules::organisationHas($record?->organisation_id ?? auth()->user()?->organisation_id, \App\Support\Modules::WORK_TRACKING))
+                            ->default(true)
+                            ->columnSpanFull()
+                            ->helperText('On: people clock in before they can start timers and work on their daily plans, and clocking out stops running timers and asks what to do with unfinished tasks. Off: attendance is only a record of working hours, and plans and timers work without clocking in.'),
                         TimePicker::make('abandoned_session_close_time')
+                            ->visible(fn ($record) => \App\Support\Modules::organisationHas($record?->organisation_id ?? auth()->user()?->organisation_id, \App\Support\Modules::ATTENDANCE))
                             ->label('Close forgotten sessions at')
                             ->seconds(false)
                             ->format('H:i')
                             ->required()
                             ->helperText('Anyone still clocked in at this time (in the time zone above) is clocked out automatically. Their session ends at their last recorded activity, not at this time, and they can ask an admin to reopen it. Example: 20:00.'),
                         TextInput::make('abandoned_timer_hours')
+                            ->visible(fn ($record) => \App\Support\Modules::organisationHas($record?->organisation_id ?? auth()->user()?->organisation_id, \App\Support\Modules::WORK_TRACKING))
                             ->label('Stop timers running longer than')
                             ->numeric()
                             ->integer()
@@ -72,6 +85,7 @@ class OrganisationSettingForm
                     ]),
 
                 Section::make('Daily plans')
+                    ->visible(fn ($record) => \App\Support\Modules::organisationHas($record?->organisation_id ?? auth()->user()?->organisation_id, \App\Support\Modules::WORK_TRACKING))
                     ->schema([
                         TextInput::make('carry_over_flag_threshold')
                             ->label('Flag a task after it has been carried over')
@@ -107,7 +121,8 @@ class OrganisationSettingForm
 
                 // Saved on the organisation itself (organisations.docs_*).
                 Section::make('Documentation library')
-                    ->description('How your public documentation library looks. Choose which manuals appear in it under Knowledge > Systems.')
+                    ->visible(fn ($record) => \App\Support\Modules::organisationHas($record?->organisation_id ?? auth()->user()?->organisation_id, \App\Support\Modules::DOCS_LIBRARY))
+                    ->description('How your public documentation library looks. Choose which manuals appear in it under Knowledge > Products.')
                     ->relationship('organisation')
                     ->collapsible()
                     ->schema([
@@ -124,7 +139,7 @@ class OrganisationSettingForm
                         TextInput::make('docs_tagline')
                             ->label('Tagline')
                             ->maxLength(255)
-                            ->placeholder('Guides and manuals for our systems')
+                            ->placeholder('Guides and manuals for our products')
                             ->helperText('One line under the title, also used as the description search engines show.'),
                         Repeater::make('docs_banners')
                             ->label('Home page announcements')

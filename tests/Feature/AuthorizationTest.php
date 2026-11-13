@@ -25,6 +25,7 @@ class AuthorizationTest extends TestCase
     public function test_worker_can_create_an_activity_log(): void
     {
         $user = $this->makeUser();
+        $this->clockIn($user); // attendance is linked to work tracking by default
         Sanctum::actingAs($user);
 
         $this->postJson('/api/v1/logs', [

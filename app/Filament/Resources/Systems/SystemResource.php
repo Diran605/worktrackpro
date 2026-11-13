@@ -19,8 +19,21 @@ use Illuminate\Database\Eloquent\Model;
 
 class SystemResource extends Resource
 {
-    // canEdit()/canDelete() below are enforced on the pages too, not just used to hide buttons.
-    use \App\Filament\Concerns\EnforcesRecordAccess;
+    // Part of a module: hidden (and 403) for organisations that don't have it.
+    use \App\Filament\Concerns\BelongsToModule;
+
+    public static function module(): string
+    {
+        return \App\Support\Modules::KNOWLEDGE;
+    }
+
+    // View / Add / Edit / Delete permissions ("systems.view" …), also enforced on the pages.
+    use \App\Filament\Concerns\HasCrudPermissions;
+
+    public static function permissionEntity(): string
+    {
+        return 'systems';
+    }
 
     protected static ?string $model = System::class;
 
@@ -28,7 +41,11 @@ class SystemResource extends Resource
 
     protected static \UnitEnum|string|null $navigationGroup = 'Knowledge';
 
-    protected static ?string $navigationLabel = 'Systems';
+    protected static ?string $navigationLabel = 'Products';
+
+    protected static ?string $modelLabel = 'product';
+
+    protected static ?string $pluralModelLabel = 'products';
 
     protected static ?int $navigationSort = 1;
 
@@ -39,12 +56,12 @@ class SystemResource extends Resource
     {
         $user = auth()->user();
 
-        return $user && ($user->can(Permissions::MANAGE_SYSTEMS) || $user->ownedSystemIds() !== []);
+        return $user && (static::allowsAction('view') || $user->ownedSystemIds() !== []);
     }
 
     public static function canCreate(): bool
     {
-        return auth()->user()?->can(Permissions::MANAGE_SYSTEMS) ?? false;
+        return static::allowsAction('create');
     }
 
     public static function canEdit(Model $record): bool
@@ -87,7 +104,7 @@ class SystemResource extends Resource
 
         $query->where('organisation_id', $user?->organisation_id);
 
-        if (!$user?->can(Permissions::MANAGE_SYSTEMS)) {
+        if (!$user?->can(Permissions::crud('systems', 'view'))) {
             $query->whereIn('id', $user?->ownedSystemIds() ?? []);
         }
 

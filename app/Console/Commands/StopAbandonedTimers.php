@@ -24,6 +24,8 @@ class StopAbandonedTimers extends Command
         $plans = DailyPlan::query()
             ->where('timer_status', TimerStatus::Running->value)
             ->whereNotNull('timer_started_at')
+            // Only organisations with the Work Tracking module.
+            ->whereIn('organisation_id', \Illuminate\Support\Facades\DB::table('organisation_modules')->where('module', \App\Support\Modules::WORK_TRACKING)->select('organisation_id'))
             ->get();
 
         $stopped = 0;

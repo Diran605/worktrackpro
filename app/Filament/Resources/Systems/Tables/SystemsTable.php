@@ -30,8 +30,9 @@ class SystemsTable
                         ->filter()
                         ->join(', '))
                     ->placeholder('No owner'),
-                TextColumn::make('department.name')->label('Department')->placeholder('â€”'),
+                TextColumn::make('department.name')->label('Department')->placeholder('—'),
                 TextColumn::make('criticality')
+                    ->label('Business impact')
                     ->badge()
                     ->formatStateUsing(fn ($state) => System::CRITICALITIES[$state] ?? $state)
                     ->color(fn ($state) => match ($state) {
@@ -52,6 +53,7 @@ class SystemsTable
                         : null),
                 TextColumn::make('library_visibility')
                     ->label('Library')
+                    ->visible(fn () => \App\Support\Modules::allows(\App\Support\Modules::DOCS_LIBRARY))
                     ->badge()
                     ->formatStateUsing(fn ($state) => System::LIBRARY_VISIBILITIES[$state] ?? $state)
                     ->color(fn ($state) => match ($state) {
@@ -62,7 +64,7 @@ class SystemsTable
                     ->description(fn (System $record) => $record->category?->name),
                 TextColumn::make('organisation.name')
                     ->label('Organisation')
-                    ->visible(fn () => auth()->user()?->hasRole('super_admin')),
+                    ->visible(fn () => \App\Support\Platform::showsOrganisations()),
             ])
             ->modifyQueryUsing(fn ($query) => $query
                 ->with(['members.user', 'department', 'category', 'organisation'])
@@ -73,10 +75,10 @@ class SystemsTable
                 ]))
             ->defaultSort('name')
             ->filters([
-                SelectFilter::make('criticality')->options(System::CRITICALITIES),
+                SelectFilter::make('criticality')->label('Business impact')->options(System::CRITICALITIES),
                 SelectFilter::make('status')->options(System::STATUSES),
                 SelectFilter::make('department_id')->relationship('department', 'name')->label('Department'),
-                SelectFilter::make('library_visibility')->label('Library')->options(System::LIBRARY_VISIBILITIES),
+                SelectFilter::make('library_visibility')->label('Library')->options(System::LIBRARY_VISIBILITIES)->visible(fn () => \App\Support\Modules::allows(\App\Support\Modules::DOCS_LIBRARY)),
             ])
             ->recordActions([
                 Action::make('manual')
@@ -87,7 +89,7 @@ class SystemsTable
                     ->label('Publish version')
                     ->icon('heroicon-o-rocket-launch')
                     ->color('success')
-                    ->visible(fn (System $record) => $record->unreleased_count > 0 && $record->canBeApprovedBy(auth()->user()))
+                    ->visible(fn (System $record) => \App\Support\Modules::allows(\App\Support\Modules::DOCS_LIBRARY) && $record->unreleased_count > 0 && $record->canBeApprovedBy(auth()->user()))
                     ->modalHeading(fn (System $record) => "Publish a new version of the {$record->name} manual")
                     ->modalDescription(fn (System $record) => self::upcomingChangesHtml($record))
                     ->modalSubmitActionLabel('Publish version')
@@ -120,7 +122,7 @@ class SystemsTable
                     ->label('View in library')
                     ->icon('heroicon-o-globe-alt')
                     ->color('gray')
-                    ->visible(fn (System $record) => $record->isInLibrary())
+                    ->visible(fn (System $record) => \App\Support\Modules::allows(\App\Support\Modules::DOCS_LIBRARY) && $record->isInLibrary())
                     ->url(fn (System $record) => \App\Support\DocsContext::for($record->organisation)->system($record), shouldOpenInNewTab: true),
                 Action::make('downloadManual')
                     ->label('Download manual')

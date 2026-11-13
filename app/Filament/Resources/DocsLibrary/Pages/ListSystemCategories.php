@@ -12,7 +12,7 @@ class ListSystemCategories extends ListRecords
 
     public function getSubheading(): ?string
     {
-        return 'Group systems on the documentation library home page. Choose a system\'s category on its page under Knowledge > Systems.';
+        return 'Group products on the documentation library home page. Choose a product\'s category on its page under Knowledge > Products.';
     }
 
     protected function getHeaderActions(): array

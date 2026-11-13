@@ -23,6 +23,9 @@ class ResolveDocsOrganisation
         $prefix = '';
 
         if ($slug = $request->route('organisation')) {
+            // Single company mode: there is only the main library, at "/".
+            abort_if(\App\Support\Platform::isSingle(), 404);
+
             $organisation = Organisation::query()->where('slug', $slug)->where('is_active', true)->first();
             $prefix = "/org/{$slug}";
             // Controllers don't take the organisation as a parameter.
@@ -36,6 +39,13 @@ class ResolveDocsOrganisation
         }
 
         abort_unless($organisation, 404);
+        // Organisations without the Documentation Library module have no public library:
+        // the main address leads to the staff portal instead, everything else is "not found".
+        if (!\App\Support\Modules::organisationHas($organisation, \App\Support\Modules::DOCS_LIBRARY)) {
+            abort_unless($request->is('/'), 404);
+
+            return redirect('/staff');
+        }
 
         $context = new DocsContext($organisation, $prefix);
         app()->instance(DocsContext::class, $context);
@@ -47,14 +57,9 @@ class ResolveDocsOrganisation
         return $next($request);
     }
 
+    /** The library at "/": the main organisation chosen under Platform Settings. */
     public static function defaultOrganisation(): ?Organisation
     {
-        $slug = config('docs.default_organisation');
-
-        return Organisation::query()
-            ->where('is_active', true)
-            ->when($slug, fn ($q) => $q->where('slug', $slug))
-            ->orderBy('id')
-            ->first();
+        return \App\Support\Platform::mainOrganisation();
     }
 }

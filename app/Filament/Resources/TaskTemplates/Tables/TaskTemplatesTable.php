@@ -30,7 +30,7 @@ class TaskTemplatesTable
                 SelectFilter::make('organisation_id')
                     ->relationship('organisation', 'name')
                     ->label('Organisation')
-                    ->hidden(fn () => !auth()->user()->hasRole('super_admin')),
+                    ->hidden(fn () => !\App\Support\Platform::showsOrganisations()),
                 SelectFilter::make('recurrence_type')
                     ->options([
                         'daily' => 'Daily',

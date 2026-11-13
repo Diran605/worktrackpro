@@ -36,7 +36,21 @@ use Illuminate\Database\Eloquent\Model;
  */
 class DocsAccessCodeResource extends Resource
 {
-    use \App\Filament\Concerns\EnforcesRecordAccess;
+    // Part of a module: hidden (and 403) for organisations that don't have it.
+    use \App\Filament\Concerns\BelongsToModule;
+
+    public static function module(): string
+    {
+        return \App\Support\Modules::DOCS_LIBRARY;
+    }
+
+    // View / Add / Edit / Delete permissions ("systems.view" …), also enforced on the pages.
+    use \App\Filament\Concerns\HasCrudPermissions;
+
+    public static function permissionEntity(): string
+    {
+        return 'systems';
+    }
 
     protected static ?string $model = DocsAccessCode::class;
 
@@ -50,26 +64,15 @@ class DocsAccessCodeResource extends Resource
 
     protected static ?int $navigationSort = 3;
 
-    public static function canViewAny(): bool
-    {
-        $user = auth()->user();
-
-        return $user && ($user->hasRole('super_admin') || $user->can(Permissions::MANAGE_SYSTEMS));
-    }
-
-    public static function canCreate(): bool
-    {
-        return static::canViewAny();
-    }
 
     public static function canEdit(Model $record): bool
     {
-        return static::canViewAny() && static::ownsRecord($record);
+        return static::allowsAction('update') && static::ownsRecord($record);
     }
 
     public static function canDelete(Model $record): bool
     {
-        return static::canEdit($record);
+        return static::allowsAction('delete') && static::ownsRecord($record);
     }
 
     private static function ownsRecord(Model $record): bool
@@ -201,7 +204,7 @@ class DocsAccessCodeResource extends Resource
                 TextColumn::make('last_used_at')->label('Last used')->since()->placeholder('Never')->sortable(),
                 TextColumn::make('organisation.name')
                     ->label('Organisation')
-                    ->visible(fn () => auth()->user()?->hasRole('super_admin')),
+                    ->visible(fn () => \App\Support\Platform::showsOrganisations()),
             ])
             ->filters([
                 TernaryFilter::make('is_active')->label('Active'),

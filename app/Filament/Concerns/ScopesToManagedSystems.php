@@ -16,7 +16,7 @@ trait ScopesToManagedSystems
     {
         $user = auth()->user();
 
-        return $user && ($user->hasRole('super_admin') || $user->can(Permissions::MANAGE_SYSTEMS) || $user->ownedSystemIds() !== []);
+        return $user && ($user->hasRole('super_admin') || $user->can(Permissions::crud('systems', 'view')) || $user->ownedSystemIds() !== []);
     }
 
     /** IDs of the systems the signed-in admin looks after, as a subquery. */
@@ -31,7 +31,7 @@ trait ScopesToManagedSystems
 
         $query->where('organisation_id', $user?->organisation_id);
 
-        if (!$user?->can(Permissions::MANAGE_SYSTEMS)) {
+        if (!$user?->can(Permissions::crud('systems', 'view'))) {
             $query->whereIn('id', $user?->ownedSystemIds() ?? []);
         }
 

@@ -44,7 +44,8 @@
                         <a v-if="change?.file?.url" :href="change.file.url" target="_blank" rel="noopener" class="text-teal-700 underline">{{ change.file.name }}</a>
                     </div>
                     <div v-if="!readOnly" class="flex flex-wrap items-end gap-3">
-                        <input type="file" accept="application/pdf" @change="pdfFile = $event.target.files[0]" class="text-sm">
+                        <input type="file" accept="application/pdf" @change="pdfFile = $event.target.files[0]"
+                               class="text-sm text-gray-600 file:mr-3 file:px-4 file:py-2 file:rounded-lg file:border-0 file:bg-teal-600 file:text-white file:font-semibold file:cursor-pointer hover:file:bg-teal-700">
                         <button type="button" @click="replacePdf" :disabled="!pdfFile || busy" class="px-3 py-1.5 rounded-lg text-sm font-semibold bg-gray-900 text-white disabled:opacity-50">Replace PDF</button>
                     </div>
                 </div>
@@ -69,7 +70,7 @@
                     <button v-if="change" type="button" @click="discard" :disabled="busy" class="text-sm text-red-600 hover:text-red-700 sm:mr-auto py-2">Delete draft</button>
                     <span v-else class="sm:mr-auto"></span>
 
-                    <button type="button" @click="trackTime" :disabled="busy" title="Start a timer for this work (needs you to be clocked in)"
+                    <button v-if="authStore.hasModule('work_tracking')" type="button" @click="trackTime" :disabled="busy" title="Start a timer for this work"
                             class="px-4 py-2 rounded-xl text-sm font-semibold bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50">
                         ⏱ Track as work
                     </button>
@@ -91,9 +92,11 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import api from '../../lib/axios';
+import { useAuthStore } from '../../stores/auth';
 import RichEditor from '../../components/knowledge/RichEditor.vue';
 import PositionPicker from '../../components/knowledge/PositionPicker.vue';
 
+const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 const slug = computed(() => route.params.slug);

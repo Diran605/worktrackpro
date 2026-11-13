@@ -25,7 +25,13 @@ protected static string $resource = RoleResource::class;
             $data['organisation_id'] = auth()->user()->organisation_id;
         }
 
-        return $data;
+        // Permissions are saved separately (grouped checklists).
+        return collect($data)->reject(fn ($v, $k) => (str_starts_with($k, 'perm_') || str_starts_with($k, 'crud_')))->all();
+    }
+
+    protected function afterCreate(): void
+    {
+        RoleResource::syncPermissions($this->record, $this->data);
     }
 }
 

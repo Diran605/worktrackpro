@@ -58,6 +58,8 @@ class OrganisationForm
                                 . ', and the default organisation\'s library is also at ' . url('/') . '.'),
                     ]),
 
+                \App\Filament\Support\ModuleFields::section(),
+
                 Section::make('Branding')
                     ->description('Customize colors and assets for this organisation')
                     ->schema([

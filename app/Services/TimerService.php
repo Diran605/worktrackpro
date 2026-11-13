@@ -49,7 +49,7 @@ class TimerService
                 'timer_started_at' => now(),
                 // A stopped timer's time was already written to an activity log, so a restart begins at zero.
                 'timer_accumulated_seconds' => $status === TimerStatus::Stopped ? 0 : (int) $plan->timer_accumulated_seconds,
-                'work_session_id' => $session->id,
+                'work_session_id' => $session?->id,
             ]);
 
             return $plan->fresh();
@@ -200,8 +200,16 @@ class TimerService
         }
     }
 
-    private function activeSessionFor(User $user): WorkSession
+    /**
+     * The work session today's timers belong to. Only when the organisation ties attendance to work
+     * tracking (Modules::attendanceLinkedToWork); otherwise timers run without a clock-in (null).
+     */
+    private function activeSessionFor(User $user): ?WorkSession
     {
+        if (!\App\Support\Modules::attendanceLinkedToWork($user->organisation_id)) {
+            return null;
+        }
+
         $session = WorkSession::query()
             ->where('user_id', $user->id)
             ->whereDate('date', $user->localToday())

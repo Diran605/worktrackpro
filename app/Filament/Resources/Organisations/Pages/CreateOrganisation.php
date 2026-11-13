@@ -15,5 +15,25 @@ class CreateOrganisation extends CreateRecord
 protected static string $resource = OrganisationResource::class;
 
     protected static bool $canCreateAnother = false;
+
+    /** Typing the address doesn't help either: no new organisations in single company mode. */
+    protected function authorizeAccess(): void
+    {
+        parent::authorizeAccess();
+
+        abort_unless(\App\Support\Platform::isMulti(), 403);
+    }
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        unset($data['modules']); // saved in afterCreate()
+
+        return $data;
+    }
+
+    protected function afterCreate(): void
+    {
+        \App\Support\Modules::setFor($this->record, $this->data['modules'] ?? []);
+    }
 }
 

@@ -33,9 +33,27 @@
             <PositionPicker :tree="tree" v-model:parent-id="parentId" v-model:after-id="afterId" />
 
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">File</label>
-                <input :key="mode" type="file" :accept="mode === 'pdf' ? 'application/pdf' : '.docx'"
-                       @change="file = $event.target.files[0]" class="text-sm">
+                <span class="block text-sm font-medium text-gray-700 mb-1">File</span>
+                <!-- Click or drop a file here -->
+                <label @dragover.prevent="dragging = true" @dragleave.prevent="dragging = false" @drop.prevent="onDrop"
+                       class="flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-8 text-center cursor-pointer transition-colors"
+                       :class="dragging ? 'border-teal-500 bg-teal-50' : file ? 'border-teal-300 bg-teal-50/50' : 'border-gray-300 bg-gray-50 hover:border-teal-400 hover:bg-teal-50/40'">
+                    <input :key="mode" type="file" class="sr-only" :accept="mode === 'pdf' ? 'application/pdf' : '.docx'"
+                           @change="file = $event.target.files[0] || null">
+                    <svg class="w-10 h-10 text-teal-600" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                    </svg>
+                    <template v-if="file">
+                        <span class="font-semibold text-gray-900 break-all">{{ file.name }}</span>
+                        <span class="text-xs text-gray-500">{{ (file.size / 1024 / 1024).toFixed(2) }} MB · click to choose a different file</span>
+                    </template>
+                    <template v-else>
+                        <span class="inline-flex items-center px-5 py-2.5 rounded-xl bg-teal-600 text-white text-sm font-semibold shadow-sm hover:bg-teal-700">
+                            Choose {{ mode === 'pdf' ? 'a PDF file' : 'a Word file (.docx)' }}
+                        </span>
+                        <span class="text-xs text-gray-500">or drag and drop it here</span>
+                    </template>
+                </label>
             </div>
 
             <div v-if="mode === 'pdf'" class="grid grid-cols-2 gap-3 max-w-sm">
@@ -106,6 +124,15 @@ const title = ref('');
 const parentId = ref(null);
 const afterId = ref(null);
 const file = ref(null);
+const dragging = ref(false);
+const onDrop = (event) => {
+    dragging.value = false;
+    const dropped = event.dataTransfer?.files?.[0];
+    if (!dropped) return;
+    const ok = mode.value === 'pdf' ? /\.pdf$/i.test(dropped.name) : /\.docx$/i.test(dropped.name);
+    if (ok) file.value = dropped;
+    else alert(mode.value === 'pdf' ? 'Please drop a PDF file.' : 'Please drop a Word file (.docx).');
+};
 const pageFrom = ref(null);
 const pageTo = ref(null);
 const summary = ref('');

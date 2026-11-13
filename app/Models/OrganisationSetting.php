@@ -18,10 +18,12 @@ class OrganisationSetting extends Model
         'inbox_max_attachment_kb',
         'inbox_allowed_mime_types',
         'abandoned_session_close_time',
+        'link_attendance_to_work',
     ];
 
     protected $casts = [
         'inbox_allowed_mime_types' => 'array',
+        'link_attendance_to_work' => 'boolean',
     ];
 
     public function organisation(): BelongsTo

@@ -23,7 +23,21 @@ use Illuminate\Database\Eloquent\Model;
  */
 class SystemCategoryResource extends Resource
 {
-    use \App\Filament\Concerns\EnforcesRecordAccess;
+    // Part of a module: hidden (and 403) for organisations that don't have it.
+    use \App\Filament\Concerns\BelongsToModule;
+
+    public static function module(): string
+    {
+        return \App\Support\Modules::DOCS_LIBRARY;
+    }
+
+    // View / Add / Edit / Delete permissions ("systems.view" …), also enforced on the pages.
+    use \App\Filament\Concerns\HasCrudPermissions;
+
+    public static function permissionEntity(): string
+    {
+        return 'systems';
+    }
 
     protected static ?string $model = SystemCategory::class;
 
@@ -37,28 +51,19 @@ class SystemCategoryResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    public static function canViewAny(): bool
-    {
-        $user = auth()->user();
-
-        return $user && ($user->hasRole('super_admin') || $user->can(Permissions::MANAGE_SYSTEMS));
-    }
-
-    public static function canCreate(): bool
-    {
-        return static::canViewAny();
-    }
 
     public static function canEdit(Model $record): bool
     {
         $user = auth()->user();
 
-        return static::canViewAny() && ($user->hasRole('super_admin') || $record->organisation_id === $user->organisation_id);
+        return static::allowsAction('update') && ($user->hasRole('super_admin') || $record->organisation_id === $user->organisation_id);
     }
 
     public static function canDelete(Model $record): bool
     {
-        return static::canEdit($record);
+        $user = auth()->user();
+
+        return static::allowsAction('delete') && ($user->hasRole('super_admin') || $record->organisation_id === $user->organisation_id);
     }
 
     public static function getEloquentQuery(): Builder
@@ -100,15 +105,15 @@ class SystemCategoryResource extends Resource
                 TextColumn::make('name')
                     ->searchable()
                     ->description(fn (SystemCategory $record) => $record->description),
-                TextColumn::make('systems_count')->label('Systems')->numeric(),
+                TextColumn::make('systems_count')->label('Products')->numeric(),
                 TextColumn::make('organisation.name')
                     ->label('Organisation')
-                    ->visible(fn () => auth()->user()?->hasRole('super_admin')),
+                    ->visible(fn () => \App\Support\Platform::showsOrganisations()),
             ])
             ->recordActions([
                 EditAction::make(),
                 DeleteAction::make()
-                    ->modalDescription('Systems in this category are kept; they move to "Other systems" in the library.'),
+                    ->modalDescription('Products in this category are kept; they move to "Other products" in the library.'),
             ]);
     }
 

@@ -26,6 +26,14 @@ class System extends Model
         'critical' => 'Critical',
     ];
 
+    /** The business impact choices with what each one means (the product form). */
+    public const IMPACT_OPTIONS = [
+        'low' => 'Low — little effect if it stops working',
+        'medium' => 'Medium — slows some work down',
+        'high' => 'High — many staff or customers are affected',
+        'critical' => 'Critical — the business cannot run without it',
+    ];
+
     public const LIBRARY_HIDDEN = 'hidden';
     public const LIBRARY_PUBLIC = 'public';
     public const LIBRARY_RESTRICTED = 'restricted';

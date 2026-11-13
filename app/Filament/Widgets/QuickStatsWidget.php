@@ -17,7 +17,7 @@ class QuickStatsWidget extends StatsOverviewWidget
     public static function canView(): bool
     {
         $user = auth()->user();
-        return $user && $user->hasPermissionTo('view_team_stats');
+        return $user && $user->hasPermissionTo('view_team_stats') && \App\Support\Modules::allows(\App\Support\Modules::WORK_TRACKING);
     }
 
     protected function getStats(): array

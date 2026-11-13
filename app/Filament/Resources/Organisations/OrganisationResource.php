@@ -30,6 +30,18 @@ class OrganisationResource extends Resource
         return auth()->user()?->hasRole('super_admin') ?? false;
     }
 
+    /** Single company mode: no organisations list in the menu (company details are reached from Platform Settings). */
+    public static function shouldRegisterNavigation(): bool
+    {
+        return \App\Support\Platform::isMulti();
+    }
+
+    /** New organisations only when several businesses are hosted. */
+    public static function canCreate(): bool
+    {
+        return static::canViewAny() && \App\Support\Platform::isMulti();
+    }
+
     public static function form(Schema $schema): Schema
     {
         return OrganisationForm::configure($schema);

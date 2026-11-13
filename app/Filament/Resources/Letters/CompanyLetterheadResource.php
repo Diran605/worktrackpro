@@ -17,6 +17,22 @@ use Illuminate\Database\Eloquent\Builder;
 
 class CompanyLetterheadResource extends Resource
 {
+    // View / Add / Edit / Delete permissions ("letterheads.view" …), also enforced on the pages.
+    use \App\Filament\Concerns\HasCrudPermissions;
+
+    public static function permissionEntity(): string
+    {
+        return 'letterheads';
+    }
+
+    // Part of a module: hidden (and 403) for organisations that don't have it.
+    use \App\Filament\Concerns\BelongsToModule;
+
+    public static function module(): string
+    {
+        return \App\Support\Modules::LETTERS;
+    }
+
     protected static ?string $model = CompanyLetterhead::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentText;
@@ -25,11 +41,6 @@ class CompanyLetterheadResource extends Resource
 
     protected static ?string $navigationLabel = 'Letterheads';
 
-    public static function canViewAny(): bool
-    {
-        // Separate from manage_letters, so a custom role can issue letters without changing the letterhead.
-        return auth()->user()?->can(\App\Support\Permissions::MANAGE_LETTERHEADS) ?? false;
-    }
 
     public static function form(Schema $schema): Schema
     {

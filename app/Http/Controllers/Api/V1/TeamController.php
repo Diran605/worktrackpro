@@ -78,7 +78,8 @@ class TeamController extends Controller
     {
         $admin = $request->user();
 
-        abort_unless($admin->can(\App\Support\Permissions::MANAGE_USERS), 403);
+        // Activating / deactivating someone counts as editing users.
+        abort_unless($admin->can(\App\Support\Permissions::crud('users', 'update')), 403);
 
         // Only within your own organisation; department admins only within their department.
         abort_if($user->organisation_id !== $admin->organisation_id, 403);

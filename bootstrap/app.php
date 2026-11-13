@@ -12,8 +12,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // "module:<key>": the route belongs to a module the organisation must have (App\Support\Modules).
+        $middleware->alias(['module' => \App\Http\Middleware\EnsureModuleEnabled::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // The whole request was bigger than PHP's post_max_size: say so instead of a bare 413.
+        $exceptions->render(function (\Illuminate\Http\Exceptions\PostTooLargeException $e, \Illuminate\Http\Request $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json(['message' => \App\Support\UploadLimits::tooLargeMessage()], 413);
+            }
+        });
     })->create();

@@ -33,7 +33,7 @@ class GenerateLetter extends Page implements HasForms
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->can(Permissions::MANAGE_LETTERS) ?? false;
+        return \App\Support\Modules::allows(\App\Support\Modules::LETTERS) && (auth()->user()?->can(Permissions::MANAGE_LETTERS) ?? false);
     }
 
     public function mount(): void

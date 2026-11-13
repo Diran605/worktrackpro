@@ -37,16 +37,21 @@ Route::prefix('v1')->group(function () {
     });
 
     Route::middleware(['auth:sanctum', \App\Http\Middleware\CheckOrganisationActive::class])->group(function () {
-        Route::get('dashboard/stats/weekly', [DashboardController::class, 'weeklyStats']);
+        // Staff dashboard cards for the organisation's modules (inbox, attendance, knowledge, library).
+        Route::get('dashboard/overview', \App\Http\Controllers\Api\V1\DashboardOverviewController::class);
+
+        // Modules: each group below belongs to a module the organisation must have (403 otherwise).
+        Route::get('dashboard/stats/weekly', [DashboardController::class, 'weeklyStats'])->middleware('module:work_tracking');
 
         // Work sessions (attendance)
-        Route::prefix('sessions')->group(function () {
+        Route::prefix('sessions')->middleware('module:attendance')->group(function () {
             Route::post('clock-in', [WorkSessionController::class, 'clockIn']);
             Route::post('clock-out', [WorkSessionController::class, 'clockOut']);
             Route::get('current', [WorkSessionController::class, 'currentSession']);
             Route::post('{session}/request-reopen', [WorkSessionController::class, 'requestReopen']);
         });
 
+        Route::middleware('module:work_tracking')->group(function () {
         // Timers
         Route::prefix('timers')->group(function () {
             Route::post('{plan}/start', [TimerController::class, 'start']);
@@ -65,25 +70,31 @@ Route::prefix('v1')->group(function () {
             Route::post('{plan}/resolve', [CarryOverController::class, 'resolveCarryOver']);
         });
 
+        // Changing tasks and logs needs a clock-in when the organisation links attendance to work
+        // tracking (viewing never does).
+        Route::middleware(\App\Http\Middleware\RequiresClockIn::class)->group(function () {
+            Route::apiResource('plans', DailyPlanController::class);
+            Route::patch('plans/{plan}/complete', [DailyPlanController::class, 'complete']);
+
+            Route::apiResource('logs', ActivityLogController::class);
+        });
+
+        // Lookup endpoints for frontend dropdowns
+        Route::get('work-types', [LookupController::class, 'workTypes']);
+        Route::get('project-clients', [LookupController::class, 'projectClients']);
+        }); // work_tracking
+
         // Inbox
         Route::prefix('inbox')->group(function () {
             Route::get('/', [InboxController::class, 'index']);
             Route::get('unread-count', [InboxController::class, 'unreadCount']);
             Route::get('{id}', [InboxController::class, 'show']);
             Route::post('send', [InboxController::class, 'send']);
-            Route::post('request-reopen', [InboxController::class, 'requestReopenLatest']);
+            Route::post('request-reopen', [InboxController::class, 'requestReopenLatest'])->middleware('module:attendance');
             Route::get('attachments/{id}/download', [InboxController::class, 'downloadAttachment']);
             Route::post('{id}/acknowledge', InboxAcknowledgeController::class);
         });
-        
-        Route::apiResource('plans', DailyPlanController::class);
-        Route::patch('plans/{plan}/complete', [DailyPlanController::class, 'complete']);
-        
-        Route::apiResource('logs', ActivityLogController::class);
 
-        // Lookup endpoints for frontend dropdowns
-        Route::get('work-types', [LookupController::class, 'workTypes']);
-        Route::get('project-clients', [LookupController::class, 'projectClients']);
 
         Route::prefix('notifications')->group(function () {
             Route::get('/', [\App\Http\Controllers\Api\V1\NotificationController::class, 'index']);
@@ -92,6 +103,7 @@ Route::prefix('v1')->group(function () {
         });
 
         // Knowledge base: system registry and manuals
+        Route::middleware('module:knowledge')->group(function () {
         Route::get('systems', [SystemController::class, 'index'])->name('api.systems.index');
         Route::get('systems/{slug}', [SystemController::class, 'show'])->name('api.systems.show');
 
@@ -101,7 +113,8 @@ Route::prefix('v1')->group(function () {
             Route::get('sections/{section}', [ManualController::class, 'section'])->whereNumber('section');
             Route::post('sections/{section}/read', [ManualController::class, 'markRead'])->whereNumber('section');
             Route::post('assets', [ManualController::class, 'uploadAsset']);
-            Route::post('track-study', [ManualController::class, 'trackStudy']);
+            // Tracking study time creates a plan task, so it also needs Work Tracking.
+            Route::post('track-study', [ManualController::class, 'trackStudy'])->middleware('module:work_tracking');
             Route::post('changes', [ManualChangeController::class, 'store'])->name('api.manual-changes.store');
             Route::post('import-docx', [ManualChangeController::class, 'importDocx']);
             Route::post('export', [\App\Http\Controllers\Api\V1\ManualExportController::class, 'store']);
@@ -116,8 +129,9 @@ Route::prefix('v1')->group(function () {
             Route::delete('{change}', [ManualChangeController::class, 'destroy']);
             Route::post('{change}/pdf', [ManualChangeController::class, 'uploadPdf'])->name('api.manual-changes.pdf');
             Route::post('{change}/submit', [ManualChangeController::class, 'submit']);
-            Route::post('{change}/track-time', [ManualChangeController::class, 'trackTime']);
+            Route::post('{change}/track-time', [ManualChangeController::class, 'trackTime'])->middleware('module:work_tracking');
         });
+        }); // knowledge
 
         // Team directory
         Route::get('team', [TeamController::class, 'index']);

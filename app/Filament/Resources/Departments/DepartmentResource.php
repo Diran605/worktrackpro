@@ -18,16 +18,20 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class DepartmentResource extends Resource
 {
+    // View / Add / Edit / Delete permissions ("departments.view" …), also enforced on the pages.
+    use \App\Filament\Concerns\HasCrudPermissions;
+
+    public static function permissionEntity(): string
+    {
+        return 'departments';
+    }
+
     protected static ?string $model = Department::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingOffice;
 
     protected static \UnitEnum|string|null $navigationGroup = 'Management';
 
-    public static function canViewAny(): bool
-    {
-        return auth()->user()?->hasPermissionTo('manage_departments') ?? false;
-    }
 
     public static function form(Schema $schema): Schema
     {

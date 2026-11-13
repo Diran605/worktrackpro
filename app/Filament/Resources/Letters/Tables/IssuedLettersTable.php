@@ -50,7 +50,7 @@ class IssuedLettersTable
                 SelectFilter::make('organisation_id')
                     ->relationship('organisation', 'name')
                     ->label('Organisation')
-                    ->hidden(fn () => !auth()->user()->hasRole('super_admin')),
+                    ->hidden(fn () => !\App\Support\Platform::showsOrganisations()),
                 SelectFilter::make('letter_type')->label('Type')->options(LetterTemplateForm::TYPES),
                 Filter::make('awaiting_acknowledgement')
                     ->label('Waiting for acknowledgement')

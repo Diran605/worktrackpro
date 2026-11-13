@@ -57,7 +57,7 @@ class AuditLogsTable
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('organisation.name')
                     ->label('Organisation')
-                    ->visible(fn () => auth()->user()?->hasRole('super_admin'))
+                    ->visible(fn () => \App\Support\Platform::showsOrganisations())
                     ->toggleable(),
             ])
             ->filters([
@@ -95,7 +95,7 @@ class AuditLogsTable
                 SelectFilter::make('organisation_id')
                     ->relationship('organisation', 'name')
                     ->label('Organisation')
-                    ->hidden(fn () => !auth()->user()?->hasRole('super_admin')),
+                    ->hidden(fn () => !\App\Support\Platform::showsOrganisations()),
             ])
             ->recordActions([
                 Action::make('details')

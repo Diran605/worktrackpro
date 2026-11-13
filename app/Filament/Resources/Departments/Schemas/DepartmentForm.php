@@ -16,7 +16,7 @@ class DepartmentForm
                 Select::make('organisation_id')
                     ->relationship('organisation', 'name')
                     ->required()
-                    ->hidden(fn () => !auth()->user()->hasRole('super_admin'))
+                    ->hidden(fn () => !\App\Support\Platform::showsOrganisations())
                     ->default(fn () => auth()->user()->organisation_id),
                 TextInput::make('name')
                     ->required(),

@@ -13,44 +13,20 @@
     <!-- CSS & JS Assets (Vite) -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
-    @php
-        $user = auth()->user();
-        $primary = $user?->organisation?->primary_color;
-        $secondary = $user?->organisation?->secondary_color;
-    @endphp
-
-    @if($primary || $secondary)
-    <style>
-        :root {
-            @if($primary)
-            --color-teal-400: {{ $primary }} !important; /* light approximation */
-            --color-teal-500: {{ $primary }} !important;
-            --color-teal-600: {{ $primary }} !important;
-            --color-teal-700: {{ $primary }} !important;
-            @endif
-
-            @if($secondary)
-            --color-indigo-400: {{ $secondary }} !important;
-            --color-indigo-500: {{ $secondary }} !important;
-            --color-indigo-600: {{ $secondary }} !important;
-            --color-indigo-700: {{ $secondary }} !important;
-            @endif
-        }
-        
-        /* Direct class overrides to guarantee Tailwind precedence */
-        @if($primary)
-        .bg-teal-600, .bg-teal-500 { background-color: {{ $primary }} !important; }
-        .text-teal-600, .text-teal-500 { color: {{ $primary }} !important; }
-        .ring-teal-500 { --tw-ring-color: {{ $primary }} !important; }
-        .border-teal-500, .border-teal-600 { border-color: {{ $primary }} !important; }
-        @endif
-
-        @if($secondary)
-        .bg-indigo-600, .bg-indigo-500 { background-color: {{ $secondary }} !important; }
-        .text-indigo-600, .text-indigo-500 { color: {{ $secondary }} !important; }
-        @endif
-    </style>
-    @endif
+    {{-- The organisation's brand colours before the app loads (the app refreshes them once it knows who is signed in). --}}
+    <style id="org-theme-initial">{!! \App\Support\Branding::css(\App\Support\Branding::organisationFor(auth()->user())) !!}</style>
+    {{-- The signed-in user's own organisation colours from the last visit, before anything is painted. --}}
+    <script>
+        try {
+            var css = localStorage.getItem('org_theme_css');
+            if (css && /^:root \{[^<]*\}\s*$/.test(css)) {
+                var style = document.createElement('style');
+                style.id = 'org-theme-overrides';
+                style.textContent = css;
+                document.head.appendChild(style);
+            }
+        } catch (e) {}
+    </script>
 </head>
 <body class="bg-gray-50 text-gray-900 font-sans antialiased">
     <div id="app"></div>

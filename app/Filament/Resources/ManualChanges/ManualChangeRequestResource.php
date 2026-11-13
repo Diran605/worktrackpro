@@ -28,6 +28,14 @@ use Illuminate\Support\HtmlString;
  */
 class ManualChangeRequestResource extends Resource
 {
+    // Part of a module: hidden (and 403) for organisations that don't have it.
+    use \App\Filament\Concerns\BelongsToModule;
+
+    public static function module(): string
+    {
+        return \App\Support\Modules::KNOWLEDGE;
+    }
+
     // canEdit()/canDelete() below are enforced on the pages too, not just used to hide buttons.
     use \App\Filament\Concerns\EnforcesRecordAccess;
 
@@ -118,7 +126,7 @@ class ManualChangeRequestResource extends Resource
                 TextColumn::make('title')
                     ->searchable()
                     ->description(fn (ManualChangeRequest $r) => ManualChangeRequest::TYPE_LABELS[$r->type] ?? $r->type),
-                TextColumn::make('system.name')->label('System')->sortable(),
+                TextColumn::make('system.name')->label('Product')->sortable(),
                 TextColumn::make('author.name')->label('Author'),
                 TextColumn::make('status')
                     ->badge()
@@ -138,7 +146,7 @@ class ManualChangeRequestResource extends Resource
                     ->options(collect(ManualChangeRequest::STATUS_LABELS)->except(ManualChangeRequest::STATUS_DRAFT))
                     ->default(ManualChangeRequest::STATUS_SUBMITTED),
                 SelectFilter::make('system_id')
-                    ->label('System')
+                    ->label('Product')
                     ->relationship('system', 'name', fn (Builder $query) => auth()->user()->hasRole('super_admin')
                         ? $query
                         : $query->where('organisation_id', auth()->user()->organisation_id)),
@@ -156,7 +164,7 @@ class ManualChangeRequestResource extends Resource
                 Section::make('Change')
                     ->columns(3)
                     ->schema([
-                        TextEntry::make('system.name')->label('System'),
+                        TextEntry::make('system.name')->label('Product'),
                         TextEntry::make('type')->formatStateUsing(fn ($state) => ManualChangeRequest::TYPE_LABELS[$state] ?? $state),
                         TextEntry::make('status')
                             ->badge()

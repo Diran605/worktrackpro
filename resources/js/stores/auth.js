@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import api from '../lib/axios';
+import { brandCss } from '../lib/brandTheme';
 
 export const useAuthStore = defineStore('auth', {
     state: () => ({
@@ -13,6 +14,10 @@ export const useAuthStore = defineStore('auth', {
         isAuthenticated: (state) => !!state.token,
         hasRole: (state) => (role) => {
              return state.user?.roles?.includes(role) || false;
+        },
+        // Modules the organisation has (work_tracking, attendance, letters, knowledge, docs_library).
+        hasModule: (state) => (module) => {
+            return (state.user?.modules || []).includes(module);
         }
     },
     
@@ -80,52 +85,27 @@ export const useAuthStore = defineStore('auth', {
         },
         
         applyThemeOverrides() {
-            if (!this.user?.organisation) return;
-            
-            const org = this.user.organisation;
-            if (org.primary_color || org.secondary_color) {
-                let style = document.getElementById('org-theme-overrides');
-                if (!style) {
-                    style = document.createElement('style');
-                    style.id = 'org-theme-overrides';
-                    document.head.appendChild(style);
-                }
-                
-                let css = ':root {\n';
-                if (org.primary_color) {
-                    css += `  --color-teal-400: ${org.primary_color} !important;\n`;
-                    css += `  --color-teal-500: ${org.primary_color} !important;\n`;
-                    css += `  --color-teal-600: ${org.primary_color} !important;\n`;
-                    css += `  --color-teal-700: ${org.primary_color} !important;\n`;
-                }
-                if (org.secondary_color) {
-                    css += `  --color-indigo-400: ${org.secondary_color} !important;\n`;
-                    css += `  --color-indigo-500: ${org.secondary_color} !important;\n`;
-                    css += `  --color-indigo-600: ${org.secondary_color} !important;\n`;
-                    css += `  --color-indigo-700: ${org.secondary_color} !important;\n`;
-                }
-                css += '}\n';
-                
-                if (org.primary_color) {
-                    css += `.bg-teal-600, .bg-teal-500 { background-color: ${org.primary_color} !important; }\n`;
-                    css += `.text-teal-600, .text-teal-500 { color: ${org.primary_color} !important; }\n`;
-                    css += `.ring-teal-500 { --tw-ring-color: ${org.primary_color} !important; }\n`;
-                    css += `.border-teal-500, .border-teal-600 { border-color: ${org.primary_color} !important; }\n`;
-                }
-                if (org.secondary_color) {
-                    css += `.bg-indigo-600, .bg-indigo-500 { background-color: ${org.secondary_color} !important; }\n`;
-                    css += `.text-indigo-600, .text-indigo-500 { color: ${org.secondary_color} !important; }\n`;
-                }
-                
-                style.innerHTML = css;
+            const org = this.user?.organisation;
+            const css = org ? brandCss(org.primary_color, org.secondary_color) : '';
+            if (!css) return;
+
+            let style = document.getElementById('org-theme-overrides');
+            if (!style) {
+                style = document.createElement('style');
+                style.id = 'org-theme-overrides';
+                document.head.appendChild(style);
             }
+            style.textContent = css;
+            // Remembered so the next page load paints these colours straight away (app.blade.php).
+            try { localStorage.setItem('org_theme_css', css); } catch (e) { /* storage unavailable */ }
         },
-        
+
         removeThemeOverrides() {
             const style = document.getElementById('org-theme-overrides');
             if (style) {
                 style.remove();
             }
+            try { localStorage.removeItem('org_theme_css'); } catch (e) { /* storage unavailable */ }
         }
     }
 });

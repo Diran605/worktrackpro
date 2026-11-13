@@ -23,7 +23,8 @@ class GenerateRecurringPlans extends Command
     {
         $generated = 0;
 
-        foreach (Organisation::query()->where('is_active', true)->get() as $organisation) {
+        // Only organisations with the Work Tracking module.
+        foreach (Organisation::query()->where('is_active', true)->whereIn('id', \Illuminate\Support\Facades\DB::table('organisation_modules')->where('module', \App\Support\Modules::WORK_TRACKING)->select('organisation_id'))->get() as $organisation) {
             $date = $this->option('date') ?: $organisation->localToday();
             $generated += $this->generateFor($organisation->id, $date);
         }

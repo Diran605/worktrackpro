@@ -73,7 +73,7 @@ class DailyPlansTable
                 SelectFilter::make('organisation_id')
                     ->relationship('organisation', 'name')
                     ->label('Organisation')
-                    ->hidden(fn () => !auth()->user()->hasRole('super_admin')),
+                    ->hidden(fn () => !\App\Support\Platform::showsOrganisations()),
                 \Filament\Tables\Filters\Filter::make('carried_over_too_often')
                     ->label('Carried over too often')
                     ->toggle()

@@ -10,7 +10,7 @@ class SystemPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->can(Permissions::VIEW_KB) || $user->can(Permissions::MANAGE_SYSTEMS);
+        return $user->can(Permissions::VIEW_KB) || $user->can(Permissions::crud('systems', 'view'));
     }
 
     public function view(User $user, System $system): bool
@@ -20,7 +20,7 @@ class SystemPolicy
 
     public function create(User $user): bool
     {
-        return $user->can(Permissions::MANAGE_SYSTEMS);
+        return $user->can(Permissions::crud('systems', 'create'));
     }
 
     /**
@@ -32,12 +32,12 @@ class SystemPolicy
             return false;
         }
 
-        return $user->can(Permissions::MANAGE_SYSTEMS) || $system->isOwnedBy($user);
+        return $user->can(Permissions::crud('systems', 'update')) || $system->isOwnedBy($user);
     }
 
     public function delete(User $user, System $system): bool
     {
-        return $this->sameOrganisation($user, $system) && $user->can(Permissions::MANAGE_SYSTEMS);
+        return $this->sameOrganisation($user, $system) && $user->can(Permissions::crud('systems', 'delete'));
     }
 
     /**
