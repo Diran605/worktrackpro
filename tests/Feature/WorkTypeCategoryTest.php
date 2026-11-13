@@ -34,6 +34,7 @@ class WorkTypeCategoryTest extends TestCase
     {
         $user = $this->makeUser();
         $calls = WorkType::create(['organisation_id' => $user->organisation_id, 'name' => 'Client calls', 'category' => 'indirect', 'color' => 'info']);
+        $this->clockIn($user); // attendance is linked to work tracking by default
         Sanctum::actingAs($user);
 
         $this->postJson('/api/v1/logs', [
@@ -55,6 +56,7 @@ class WorkTypeCategoryTest extends TestCase
     {
         $user = $this->makeUser();
         $foreign = WorkType::where('organisation_id', Organisation::factory()->create()->id)->first();
+        $this->clockIn($user); // attendance is linked to work tracking by default
         Sanctum::actingAs($user);
 
         $this->postJson('/api/v1/logs', [

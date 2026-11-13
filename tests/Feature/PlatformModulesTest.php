@@ -170,6 +170,38 @@ class PlatformModulesTest extends TestCase
         $this->assertSame(TimerStatus::Running, $plan->fresh()->timer_status);
     }
 
+    public function test_linked_tasks_and_logs_cannot_be_changed_without_clocking_in(): void
+    {
+        $worker = $this->makeUser('worker', $this->admin->organisation);
+        $plan = $this->planFor($worker);
+        Sanctum::actingAs($worker);
+
+        // Viewing is fine…
+        $this->getJson('/api/v1/plans')->assertOk();
+        $this->getJson('/api/v1/logs')->assertOk();
+
+        // …changing is refused until clocked in, even when calling the API directly.
+        $this->postJson('/api/v1/plans', ['title' => 'Write report', 'date' => now()->toDateString()])
+            ->assertStatus(422)->assertJsonValidationErrors('session');
+        $this->patchJson("/api/v1/plans/{$plan->id}/complete")->assertStatus(422);
+        $this->deleteJson("/api/v1/plans/{$plan->id}")->assertStatus(422);
+        $this->postJson('/api/v1/logs', [])->assertStatus(422)->assertJsonValidationErrors('session');
+
+        $this->clockIn($worker);
+        $this->patchJson("/api/v1/plans/{$plan->id}/complete")->assertOk();
+    }
+
+    public function test_unlinked_tasks_can_be_changed_without_clocking_in(): void
+    {
+        OrganisationSetting::updateOrCreate(['organisation_id' => $this->admin->organisation_id], ['link_attendance_to_work' => false]);
+        app(\App\Services\OrganisationSettingsService::class)->clearCache($this->admin->organisation_id);
+        $worker = $this->makeUser('worker', $this->admin->organisation);
+        $plan = $this->planFor($worker);
+        Sanctum::actingAs($worker);
+
+        $this->patchJson("/api/v1/plans/{$plan->id}/complete")->assertOk();
+    }
+
     public function test_work_tracking_without_attendance_needs_no_clock_in(): void
     {
         $this->onlyModules([Modules::WORK_TRACKING]);

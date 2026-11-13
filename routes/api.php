@@ -67,10 +67,14 @@ Route::prefix('v1')->group(function () {
             Route::post('{plan}/resolve', [CarryOverController::class, 'resolveCarryOver']);
         });
 
-        Route::apiResource('plans', DailyPlanController::class);
-        Route::patch('plans/{plan}/complete', [DailyPlanController::class, 'complete']);
+        // Changing tasks and logs needs a clock-in when the organisation links attendance to work
+        // tracking (viewing never does).
+        Route::middleware(\App\Http\Middleware\RequiresClockIn::class)->group(function () {
+            Route::apiResource('plans', DailyPlanController::class);
+            Route::patch('plans/{plan}/complete', [DailyPlanController::class, 'complete']);
 
-        Route::apiResource('logs', ActivityLogController::class);
+            Route::apiResource('logs', ActivityLogController::class);
+        });
 
         // Lookup endpoints for frontend dropdowns
         Route::get('work-types', [LookupController::class, 'workTypes']);
