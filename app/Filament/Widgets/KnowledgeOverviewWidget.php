@@ -57,7 +57,7 @@ class KnowledgeOverviewWidget extends StatsOverviewWidget
                 ->icon('heroicon-o-check-badge')
                 ->color($waiting > 0 ? 'warning' : 'success')
                 ->url(ManualChangeRequestResource::canAccess() ? ManualChangeRequestResource::getUrl('index') : null),
-            Stat::make('Systems', $systemIds->count())
+            Stat::make('Products', $systemIds->count())
                 ->description($withoutOwner > 0 ? "{$withoutOwner} without an owner" : 'All have an owner')
                 ->icon('heroicon-o-server-stack')
                 ->color($withoutOwner > 0 ? 'danger' : 'primary')

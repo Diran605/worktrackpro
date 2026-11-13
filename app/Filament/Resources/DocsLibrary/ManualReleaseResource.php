@@ -69,7 +69,7 @@ class ManualReleaseResource extends Resource
             ->modifyQueryUsing(fn (Builder $query) => $query->with(['system.organisation', 'publisher:id,name'])->withCount('revisions'))
             ->defaultSort('published_at', 'desc')
             ->columns([
-                TextColumn::make('system.name')->label('System')->searchable(),
+                TextColumn::make('system.name')->label('Product')->searchable(),
                 TextColumn::make('version')->prefix('v')->weight('bold'),
                 IconColumn::make('is_major')->label('Major')->boolean(),
                 TextColumn::make('summary')->wrap()->limit(120),
@@ -79,7 +79,7 @@ class ManualReleaseResource extends Resource
             ])
             ->filters([
                 SelectFilter::make('system_id')
-                    ->label('System')
+                    ->label('Product')
                     ->relationship('system', 'name', fn (Builder $query) => static::systemFilterQuery($query)),
             ])
             ->recordActions([

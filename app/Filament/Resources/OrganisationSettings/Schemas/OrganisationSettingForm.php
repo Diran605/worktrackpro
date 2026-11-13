@@ -122,7 +122,7 @@ class OrganisationSettingForm
                 // Saved on the organisation itself (organisations.docs_*).
                 Section::make('Documentation library')
                     ->visible(fn ($record) => \App\Support\Modules::organisationHas($record?->organisation_id ?? auth()->user()?->organisation_id, \App\Support\Modules::DOCS_LIBRARY))
-                    ->description('How your public documentation library looks. Choose which manuals appear in it under Knowledge > Systems.')
+                    ->description('How your public documentation library looks. Choose which manuals appear in it under Knowledge > Products.')
                     ->relationship('organisation')
                     ->collapsible()
                     ->schema([
@@ -139,7 +139,7 @@ class OrganisationSettingForm
                         TextInput::make('docs_tagline')
                             ->label('Tagline')
                             ->maxLength(255)
-                            ->placeholder('Guides and manuals for our systems')
+                            ->placeholder('Guides and manuals for our products')
                             ->helperText('One line under the title, also used as the description search engines show.'),
                         Repeater::make('docs_banners')
                             ->label('Home page announcements')

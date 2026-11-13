@@ -41,7 +41,11 @@ class SystemResource extends Resource
 
     protected static \UnitEnum|string|null $navigationGroup = 'Knowledge';
 
-    protected static ?string $navigationLabel = 'Systems';
+    protected static ?string $navigationLabel = 'Products';
+
+    protected static ?string $modelLabel = 'product';
+
+    protected static ?string $pluralModelLabel = 'products';
 
     protected static ?int $navigationSort = 1;
 

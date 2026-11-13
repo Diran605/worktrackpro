@@ -99,7 +99,7 @@ class ModuleDashboardsTest extends TestCase
         Livewire::test(CoreOverviewWidget::class)->assertSee('Active staff')->assertSee('Unread messages');
         Livewire::test(AttendanceTodayWidget::class)->assertSee('Clocked in now')->assertSee('of 2 active staff');
         Livewire::test(AttendanceWeekChart::class)->assertOk();
-        Livewire::test(KnowledgeOverviewWidget::class)->assertSee('Waiting for your approval')->assertSee('Systems');
+        Livewire::test(KnowledgeOverviewWidget::class)->assertSee('Waiting for your approval')->assertSee('Products');
         Livewire::test(PendingManualApprovalsWidget::class)->assertSee('Refunds')->assertSee('POS');
         Livewire::test(LibraryOverviewWidget::class)->assertSee('Access requests')->assertSee('1 public');
         Livewire::test(LettersOverviewWidget::class)->assertSee('Issued this month');

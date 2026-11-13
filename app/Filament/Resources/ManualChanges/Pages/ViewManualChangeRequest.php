@@ -37,7 +37,7 @@ class ViewManualChangeRequest extends ViewRecord
                     \Filament\Forms\Components\Toggle::make('publish_now')
                         ->label('Publish to the library now as a minor version')
                         ->helperText(fn () => 'For urgent fixes. Releases this and every other approved change as v'
-                            . $this->record->system->nextManualVersion(false) . '. Leave off to group it with other changes and publish a version later under Knowledge > Systems.')
+                            . $this->record->system->nextManualVersion(false) . '. Leave off to group it with other changes and publish a version later under Knowledge > Products.')
                         ->visible(fn () => \App\Support\Modules::allows(\App\Support\Modules::DOCS_LIBRARY) && $this->record->system->isInLibrary())
                         ->live(),
                     \Filament\Forms\Components\Textarea::make('release_summary')

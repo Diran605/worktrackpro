@@ -105,7 +105,7 @@ class SystemCategoryResource extends Resource
                 TextColumn::make('name')
                     ->searchable()
                     ->description(fn (SystemCategory $record) => $record->description),
-                TextColumn::make('systems_count')->label('Systems')->numeric(),
+                TextColumn::make('systems_count')->label('Products')->numeric(),
                 TextColumn::make('organisation.name')
                     ->label('Organisation')
                     ->visible(fn () => \App\Support\Platform::showsOrganisations()),
@@ -113,7 +113,7 @@ class SystemCategoryResource extends Resource
             ->recordActions([
                 EditAction::make(),
                 DeleteAction::make()
-                    ->modalDescription('Systems in this category are kept; they move to "Other systems" in the library.'),
+                    ->modalDescription('Products in this category are kept; they move to "Other products" in the library.'),
             ]);
     }
 

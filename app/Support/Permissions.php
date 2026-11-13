@@ -64,7 +64,7 @@ final class Permissions
         'project_clients' => ['Clients & projects', 'The clients and projects work can be logged against.', 'manage_project_clients'],
         'task_templates' => ['Recurring task templates', 'Tasks that are added to people’s plans automatically.', 'manage_task_templates'],
         'letterheads' => ['Letterheads', 'The company letterheads used on letters.', 'manage_letterheads'],
-        'systems' => ['Systems & documentation library', 'Systems and their owners; library categories, audiences and access codes.', 'manage_systems'],
+        'systems' => ['Products & documentation library', 'Products and their owners; library categories, audiences and access codes.', 'manage_systems'],
     ];
 
     /**
@@ -127,13 +127,13 @@ final class Permissions
         ],
         'knowledge' => [
             'label' => 'Knowledge base',
-            'description' => 'Systems and their user manuals.',
+            'description' => 'Products and their user manuals.',
             'module' => Modules::KNOWLEDGE,
             'lists' => ['systems'],
             'permissions' => [
                 self::VIEW_KB => ['Read manuals', 'Read the knowledge base in the staff portal.'],
-                self::CONTRIBUTE_KB => ['Suggest manual changes', 'Write or upload manual content; a system owner approves it.'],
-                self::APPROVE_KB => ['Approve manual changes', 'Approve changes for every system, not only the ones they own.'],
+                self::CONTRIBUTE_KB => ['Suggest manual changes', 'Write or upload manual content; a product owner approves it.'],
+                self::APPROVE_KB => ['Approve manual changes', 'Approve changes for every product, not only the ones they own.'],
             ],
         ],
     ];

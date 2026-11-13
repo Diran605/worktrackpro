@@ -38,7 +38,7 @@ class PendingManualApprovalsWidget extends TableWidget
             ->recordUrl(fn (ManualChangeRequest $record) => ManualChangeRequestResource::getUrl('view', ['record' => $record]))
             ->columns([
                 TextColumn::make('title')->label('Change')->limit(60),
-                TextColumn::make('system.name')->label('System'),
+                TextColumn::make('system.name')->label('Product'),
                 TextColumn::make('author.name')->label('By'),
                 TextColumn::make('updated_at')->label('Submitted')->since(),
             ]);

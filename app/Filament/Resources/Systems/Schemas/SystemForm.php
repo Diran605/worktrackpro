@@ -28,12 +28,12 @@ class SystemForm
                             ->required()
                             ->maxLength(255),
                         TextInput::make('url')
-                            ->label('Link to the system')
+                            ->label('Link to the product')
                             ->url()
                             ->maxLength(255),
                         TextInput::make('summary')
                             ->label('One-line summary')
-                            ->helperText('What does this system do, in one sentence?')
+                            ->helperText('What does this product do, in one sentence?')
                             ->maxLength(500)
                             ->columnSpanFull(),
                         RichEditor::make('description')
@@ -54,7 +54,9 @@ class SystemForm
                             ->searchable()
                             ->preload(),
                         Select::make('criticality')
-                            ->options(System::CRITICALITIES)
+                            ->label('Business impact')
+                            ->options(System::IMPACT_OPTIONS)
+                            ->helperText('How badly the business is affected if this product stops working. Shown as a badge so people know how careful to be with it.')
                             ->default('medium')
                             ->required(),
                         Select::make('status')
@@ -95,7 +97,7 @@ class SystemForm
                             )
                             ->searchable()
                             ->preload()
-                            ->helperText('Groups systems on the library home page, e.g. "Finance" or "Customer service".')
+                            ->helperText('Groups products on the library home page, e.g. "Finance" or "Customer service".')
                             ->createOptionForm([
                                 TextInput::make('name')->required()->maxLength(100),
                                 Textarea::make('description')->rows(2)->maxLength(500),
@@ -106,7 +108,7 @@ class SystemForm
                     ]),
 
                 Section::make('People')
-                    ->description('Owners and backup owners approve changes to this system\'s manual.')
+                    ->description('Owners and backup owners approve changes to this product\'s manual.')
                     ->schema([
                         Repeater::make('members')
                             ->relationship()

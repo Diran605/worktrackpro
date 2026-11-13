@@ -30,8 +30,9 @@ class SystemsTable
                         ->filter()
                         ->join(', '))
                     ->placeholder('No owner'),
-                TextColumn::make('department.name')->label('Department')->placeholder('â€”'),
+                TextColumn::make('department.name')->label('Department')->placeholder('—'),
                 TextColumn::make('criticality')
+                    ->label('Business impact')
                     ->badge()
                     ->formatStateUsing(fn ($state) => System::CRITICALITIES[$state] ?? $state)
                     ->color(fn ($state) => match ($state) {
@@ -74,7 +75,7 @@ class SystemsTable
                 ]))
             ->defaultSort('name')
             ->filters([
-                SelectFilter::make('criticality')->options(System::CRITICALITIES),
+                SelectFilter::make('criticality')->label('Business impact')->options(System::CRITICALITIES),
                 SelectFilter::make('status')->options(System::STATUSES),
                 SelectFilter::make('department_id')->relationship('department', 'name')->label('Department'),
                 SelectFilter::make('library_visibility')->label('Library')->options(System::LIBRARY_VISIBILITIES)->visible(fn () => \App\Support\Modules::allows(\App\Support\Modules::DOCS_LIBRARY)),

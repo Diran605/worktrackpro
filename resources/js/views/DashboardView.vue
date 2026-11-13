@@ -172,7 +172,7 @@
             <!-- Documentation library (owners) -->
             <div v-if="overview.library" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                 <h3 class="font-bold text-gray-900 mb-1">Not in the library yet</h3>
-                <p class="text-xs text-gray-500 mb-3">Approved changes readers can't see until you publish a version (admin panel › Knowledge › Systems).</p>
+                <p class="text-xs text-gray-500 mb-3">Approved changes readers can't see until you publish a version (admin panel › Knowledge › Products).</p>
                 <ul class="space-y-2">
                     <li v-for="p in overview.library" :key="p.slug" class="flex items-center justify-between text-sm">
                         <span><span class="font-medium text-gray-900">{{ p.name }}</span> <span class="text-amber-700">· {{ p.waiting }} {{ p.waiting === 1 ? 'change' : 'changes' }}</span></span>

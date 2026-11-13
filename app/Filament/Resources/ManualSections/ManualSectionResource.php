@@ -100,7 +100,7 @@ class ManualSectionResource extends Resource
             ->paginated([25, 50, 100, 'all'])
             ->defaultPaginationPageOption(50)
             ->columns([
-                TextColumn::make('system.name')->label('System'),
+                TextColumn::make('system.name')->label('Product'),
                 TextColumn::make('number')->label('#')->placeholder('—'),
                 TextColumn::make('title')
                     ->searchable()
@@ -138,7 +138,7 @@ class ManualSectionResource extends Resource
             ])
             ->filters([
                 SelectFilter::make('system_id')
-                    ->label('System')
+                    ->label('Product')
                     ->relationship('system', 'name', fn (Builder $query) => auth()->user()->hasRole('super_admin')
                         ? $query
                         : $query->where('organisation_id', auth()->user()->organisation_id)),
