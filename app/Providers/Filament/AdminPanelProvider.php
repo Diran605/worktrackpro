@@ -28,7 +28,7 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             // The organisation's primary colour (Organisation › Branding); teal by default.
             ->colors(fn () => [
-                'primary' => Color::hex(\App\Support\Branding::primary(\App\Support\Branding::organisationFor(auth()->user()))),
+                'primary' => \App\Support\Branding::filamentPalette(\App\Support\Branding::primary(\App\Support\Branding::organisationFor(auth()->user()))),
                 'danger' => Color::Rose,
                 'info' => Color::Sky,
                 'success' => Color::Emerald,

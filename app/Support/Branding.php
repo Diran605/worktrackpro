@@ -55,6 +55,28 @@ class Branding
         return ":root {\n" . implode("\n", $lines) . "\n}\n";
     }
 
+    /**
+     * The admin panel palette. Filament's own generator fixes every shade's
+     * lightness and saturation, so buttons came out brighter than the chosen
+     * colour; this one keeps the exact colour at 600 (buttons, links, active menu).
+     *
+     * @return array<int, string>
+     */
+    public static function filamentPalette(string $hex): array
+    {
+        $hex = ltrim($hex, '#');
+        if (strlen($hex) === 3) {
+            $hex = preg_replace('/(.)/', '$1$1', $hex);
+        }
+        // Filament's v3 palette takes the colour as 500 and 600 = 90% of it, so start from colour / 0.9.
+        $base = array_map(fn ($c) => min(255, (int) round(hexdec($c) / 0.9)), str_split($hex, 2));
+
+        $palette = \Filament\Support\Colors\Color::generateV3Palette(vsprintf('rgb(%d, %d, %d)', $base));
+        $palette[600] = \Filament\Support\Colors\Color::convertToOklch('#' . $hex);
+
+        return $palette;
+    }
+
     /** Only #rgb / #rrggbb values: they end up inside CSS. */
     public static function valid(?string $color): ?string
     {

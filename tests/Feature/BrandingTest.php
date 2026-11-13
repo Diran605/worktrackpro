@@ -22,7 +22,7 @@ class BrandingTest extends TestCase
 
         $html = $this->actingAs($admin)->get('/admin')->assertOk()->getContent();
 
-        $this->assertStringContainsString(Color::hex('#dc2626')[600], $html);
+        $this->assertStringContainsString(Branding::filamentPalette('#dc2626')[600], $html);
         $this->assertStringNotContainsString(Color::Teal[600], $html);
     }
 
