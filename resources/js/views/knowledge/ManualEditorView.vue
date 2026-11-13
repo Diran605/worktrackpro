@@ -44,7 +44,8 @@
                         <a v-if="change?.file?.url" :href="change.file.url" target="_blank" rel="noopener" class="text-teal-700 underline">{{ change.file.name }}</a>
                     </div>
                     <div v-if="!readOnly" class="flex flex-wrap items-end gap-3">
-                        <input type="file" accept="application/pdf" @change="pdfFile = $event.target.files[0]" class="text-sm">
+                        <input type="file" accept="application/pdf" @change="pdfFile = $event.target.files[0]"
+                               class="text-sm text-gray-600 file:mr-3 file:px-4 file:py-2 file:rounded-lg file:border-0 file:bg-teal-600 file:text-white file:font-semibold file:cursor-pointer hover:file:bg-teal-700">
                         <button type="button" @click="replacePdf" :disabled="!pdfFile || busy" class="px-3 py-1.5 rounded-lg text-sm font-semibold bg-gray-900 text-white disabled:opacity-50">Replace PDF</button>
                     </div>
                 </div>
