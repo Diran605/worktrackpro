@@ -53,7 +53,7 @@
         <div class="mb-8 p-6 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Welcome back, {{ authStore.user?.name }}</h1>
-                <p class="text-sm text-gray-500 mt-1 capitalize">{{ authStore.user?.roles?.[0]?.name?.replace('_', ' ') || 'Worker' }} • {{ authStore.user?.department?.name || authStore.user?.organisation?.name }}</p>
+                <p class="text-sm text-gray-500 mt-1 capitalize">{{ authStore.user?.roles?.[0]?.replace('_', ' ') || 'Worker' }} • {{ authStore.user?.department?.name || authStore.user?.organisation?.name }}</p>
             </div>
             
             <!-- Quick Actions (Work Tracking module) -->
