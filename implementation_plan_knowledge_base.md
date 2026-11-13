@@ -10,7 +10,8 @@ Turns company systems/projects from "knowledge in people's heads" into structure
 | 1 — System registry | ✅ Done (2026-11-11) |
 | 2 — Manuals | ✅ Done (2026-11-11) |
 | 3 — Manual generation (PDF) | ✅ Done (2026-11-13) |
-| 3B — Documentation Library (public docs site) | Built (2026-11-12), awaiting merge. Library shows the last published version |
+| 3B — Documentation Library (public docs site) | ✅ Done (2026-11-13). Library shows the last published version; audiences; no library PDF |
+| 3C — Platform: modules and company mode | In progress (2026-11-13) |
 | 4 — Competency & readiness | Not started |
 | 5 — Tickets & FAQ | Not started |
 | 6 — Insights | Not started |
@@ -289,6 +290,50 @@ Routing (old addresses redirect, `/staff` serves the portal); organisation resol
 4. The docs site pages (home, system, reader, changes, search, locked page, PDF), following the UI above.
 5. Admin panel resources and settings; staff portal touches.
 6. Domains, sitemap/SEO, README.
+
+---
+
+## Phase 3C: Platform — Modules and Company Mode
+
+### Decisions (2026-11-13)
+- WorkTrack Pro is sold by **module**. The super admin turns modules on or off per organisation. **Switched-off modules are invisible** to that organisation (menus, pages, API, jobs, library); their data is kept, so switching back on restores everything.
+- On/off only for now. Trial or subscription end dates can come later (the table allows it).
+- **Super admins** see every module (they run the platform).
+- **Company mode:** *single company* (one business per installation) or *multiple companies* (several businesses, each separate). Nothing in the data changes between the two; single mode only hides the "which organisation?" parts. Everything stays organisation-scoped so switching later is just a setting.
+- This installation starts in **single company** mode with *WorkTrack Demo Org* as the main organisation; other organisations are made inactive (not deleted).
+
+### Modules
+| Key | Module | Contains | Needs |
+|---|---|---|---|
+| — | **Core** (always on) | Users, departments, roles, organisation settings, inbox, audit log | |
+| `work_tracking` | **Work Tracking** | Daily plans, timers, activity logs, recurring tasks, task templates, work types, projects & clients, team view, Team Pulse, dashboard stats | |
+| `attendance` | **Attendance** | Clock-in/out, sessions, reopen requests, Attendance Overview | |
+| `letters` | **HR Letters** | Letter templates, letterheads, issued letters | |
+| `knowledge` | **Knowledge Base** | Systems, manuals, approvals, structure, PDF export | |
+| `docs_library` | **Documentation Library** | Public library, categories, audiences, access codes, versions, requests, feedback | Knowledge Base |
+| (Phase 4) `competency` | Competency & Readiness | | Knowledge Base |
+| (Phase 5) `support` | Support (tickets & FAQ) | | Knowledge Base |
+
+Presets: **Full suite**, **Manuals only** (Knowledge + Library), **Work tracking only** (Work Tracking + Attendance).
+
+Without Attendance, timers don't require clocking in. Without Work Tracking, "track study/writing time" (which creates plan tasks) is hidden.
+
+### Where "off" is enforced
+- Admin panel: resources, pages and widgets of the module are hidden and their addresses answer 403.
+- Staff portal: menu items, dashboard cards and routes are hidden; `/auth/me` returns the enabled modules.
+- API: `module:<key>` middleware on each module's routes.
+- Scheduled jobs skip organisations without the module.
+- Documentation library: 404 for organisations without it.
+
+### Database
+- `organisation_modules`: `organisation_id`, `module`, timestamps; unique pair. Existing and new organisations get every module by default.
+- `platform_settings`: `key`, `value` (json). Keys: `company_mode` (`single|multi`), `main_organisation_id`.
+
+### Admin
+- **Platform Settings** page (super admin): company mode, main organisation (also the library at `/`), modules of the main organisation, link to company details.
+- **Organisations** form (multi mode): Modules checklist with presets.
+- Single mode: Organisations hidden from the menu; "Organisation" columns and filters hidden; `/org/{slug}` library addresses off; no new organisations. Switching to single makes the other organisations inactive.
+- Command: `php artisan worktrack:platform:mode single|multi --main=<slug>`.
 
 ---
 
