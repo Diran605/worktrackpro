@@ -52,6 +52,90 @@ final class Permissions
     public const MANAGE_OWN_WORK = 'manage_own_work';
 
     /**
+     * How permissions are shown on the Roles page: grouped by area, with a plain name and what it
+     * allows. `module` hides the group for organisations without that module (null: always shown).
+     */
+    public const GROUPS = [
+        'everyone' => [
+            'label' => 'Everyday work (staff portal)',
+            'description' => 'What every member of staff normally has. On their own, these only open the staff portal, not the admin panel.',
+            'module' => null,
+            'permissions' => [
+                self::VIEW_OWN_DATA => ['Use the staff portal', 'Sign in to the portal and see their own work.'],
+                self::MANAGE_OWN_WORK => ['Plan and log their own work', 'Create their own daily plans, run timers and log activities.'],
+                self::VIEW_INBOX => ['Use the inbox', 'Read and send inbox messages.'],
+            ],
+        ],
+        'people' => [
+            'label' => 'People & organisation',
+            'description' => 'Running the organisation in the admin panel.',
+            'module' => null,
+            'permissions' => [
+                self::MANAGE_USERS => ['Manage users', 'Add, edit and deactivate users.'],
+                self::MANAGE_DEPARTMENTS => ['Manage departments', 'Create and edit departments.'],
+                self::MANAGE_ROLES => ['Manage roles & permissions', 'Create custom roles and choose their permissions (only permissions they hold themselves).'],
+                self::MANAGE_SYSTEM_SETTINGS => ['Change platform settings', 'Super admin only: company mode and modules.'],
+                self::VIEW_AUDIT_LOGS => ['View the audit log', 'See who changed what, and when.'],
+                self::SEND_BROADCAST => ['Send broadcast messages', 'Send an inbox message to everyone or a whole department.'],
+            ],
+        ],
+        'work' => [
+            'label' => 'Work tracking',
+            'description' => 'Plans, statistics and the lists behind them.',
+            'module' => Modules::WORK_TRACKING,
+            'permissions' => [
+                self::ASSIGN_PLANS => ['Assign tasks to others', 'Add tasks to other people’s daily plans.'],
+                self::VIEW_TEAM_STATS => ['See team statistics', 'Department and organisation performance on the dashboard and in Team Pulse.'],
+                self::EXPORT_REPORTS => ['Download reports', 'Export productivity reports as PDF.'],
+                self::MANAGE_TASK_TEMPLATES => ['Manage recurring task templates', 'Tasks that are added to people’s plans automatically.'],
+                self::MANAGE_WORK_TYPES => ['Manage work types', 'The kinds of work people log, and how each one counts.'],
+                self::MANAGE_PROJECT_CLIENTS => ['Manage clients & projects', 'The clients and projects work can be logged against.'],
+            ],
+        ],
+        'attendance' => [
+            'label' => 'Attendance',
+            'description' => 'Clock-in records and corrections.',
+            'module' => Modules::ATTENDANCE,
+            'permissions' => [
+                self::MANAGE_ATTENDANCE => ['Manage attendance', 'See and correct everyone’s clock-in records.'],
+                self::REOPEN_SESSIONS => ['Reopen work sessions', 'Approve requests to reopen a closed session.'],
+            ],
+        ],
+        'letters' => [
+            'label' => 'HR letters',
+            'description' => 'Official letters to employees.',
+            'module' => Modules::LETTERS,
+            'permissions' => [
+                self::MANAGE_LETTERS => ['Issue letters', 'Write letters from templates and issue them to employees.'],
+                self::MANAGE_LETTERHEADS => ['Manage letterheads', 'Upload and choose the company letterhead.'],
+            ],
+        ],
+        'knowledge' => [
+            'label' => 'Knowledge base',
+            'description' => 'Systems and their user manuals.',
+            'module' => Modules::KNOWLEDGE,
+            'permissions' => [
+                self::VIEW_KB => ['Read manuals', 'Read the knowledge base in the staff portal.'],
+                self::CONTRIBUTE_KB => ['Suggest manual changes', 'Write or upload manual content; a system owner approves it.'],
+                self::MANAGE_SYSTEMS => ['Manage systems & the library', 'Add systems and owners, categories, audiences and access codes.'],
+                self::APPROVE_KB => ['Approve manual changes', 'Approve changes for every system, not only the ones they own.'],
+            ],
+        ],
+    ];
+
+    /** Plain name of a permission, e.g. "Manage users". */
+    public static function label(string $permission): string
+    {
+        foreach (self::GROUPS as $group) {
+            if (isset($group['permissions'][$permission])) {
+                return $group['permissions'][$permission][0];
+            }
+        }
+
+        return ucfirst(str_replace('_', ' ', $permission));
+    }
+
+    /**
      * Permissions that only unlock the Vue portal. Holding only these does NOT grant /admin access.
      */
     public const PORTAL_ONLY = [

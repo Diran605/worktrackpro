@@ -97,87 +97,123 @@ class RoleResource extends Resource
         return $user->getAllPermissions()->pluck('name')->all();
     }
 
+    /**
+     * Permission groups shown on the form: those of modules the organisation has, and only the
+     * permissions the current user may hand out.
+     *
+     * @return array<string, array{label: string, description: string, permissions: array<string, array{0: string, 1: string}>}>
+     */
+    public static function visibleGroups(): array
+    {
+        $grantable = static::grantablePermissionNames();
+
+        return collect(Permissions::GROUPS)
+            ->filter(fn (array $group) => $group['module'] === null || \App\Support\Modules::allows($group['module']))
+            ->map(fn (array $group) => ['permissions' => array_intersect_key($group['permissions'], array_flip($grantable))] + $group)
+            ->filter(fn (array $group) => $group['permissions'] !== [])
+            ->all();
+    }
+
     public static function form(Schema $schema): Schema
     {
+        $groups = collect(static::visibleGroups())->map(
+            fn (array $group, string $key) => Section::make($group['label'])
+                ->description($group['description'])
+                ->compact()
+                ->schema([
+                    CheckboxList::make("perm_{$key}")
+                        ->hiddenLabel()
+                        ->options(collect($group['permissions'])->map(fn ($p) => $p[0])->all())
+                        ->descriptions(collect($group['permissions'])->map(fn ($p) => $p[1])->all())
+                        ->bulkToggleable(),
+                ])
+        )->values()->all();
+
         return $schema
+            ->columns(2)
             ->components([
-                Section::make('Role Details')
+                Section::make('Role')
+                    ->description('A role is a set of permissions you give to people. Assign roles to people under Users.')
+                    ->columnSpanFull()
                     ->schema([
                         TextInput::make('name')
+                            ->label('Role name')
                             ->required()
                             ->maxLength(255)
                             ->unique(ignoreRecord: true)
-                            ->placeholder('e.g. HR Admin, Team Lead')
-                            ->helperText('Use lowercase with underscores for system roles'),
+                            ->placeholder('e.g. Team Lead, HR Officer')
+                            ->helperText('A short name people will recognise.'),
                     ]),
-
-                Section::make('Permissions')
-                    ->description('Select which permissions this role should have')
-                    ->schema([
-                        CheckboxList::make('permissions')
-                            ->relationship(
-                                'permissions',
-                                'name',
-                                fn (Builder $query) => $query->whereIn('name', static::grantablePermissionNames())
-                            )
-                            ->columns(2)
-                            ->descriptions([
-                                'manage_users' => 'Create, edit, and deactivate users',
-                                'manage_departments' => 'Create and edit departments',
-                                'manage_work_types' => 'Create and manage work type categories',
-                                'manage_project_clients' => 'Create and manage projects/clients',
-                                'manage_roles' => 'Create and assign roles (super admin only)',
-                                'assign_plans' => 'Assign daily plans to workers',
-                                'view_team_stats' => 'View team/department performance metrics',
-                                'export_reports' => 'Download PDF productivity reports',
-                                'view_audit_logs' => 'Access the audit trail',
-                                'view_own_data' => 'View own plans and activity logs',
-                                'manage_own_work' => 'Create own plans and log activities',
-                                'manage_attendance' => 'View and manage attendance',
-                                'reopen_sessions' => 'Approve session reopen requests',
-                                'manage_task_templates' => 'Create recurring task templates',
-                                'view_inbox' => 'Use the inbox',
-                                'send_broadcast' => 'Send broadcast messages',
-                                'manage_letters' => 'Generate and issue letters',
-                                'manage_letterheads' => 'Manage company letterheads',
-                                'manage_system_settings' => 'Change organisation settings',
-                                'view_kb' => 'Read the knowledge base (systems & manuals)',
-                                'contribute_kb' => 'Write or upload manual content (needs owner approval)',
-                                'manage_systems' => 'Create and manage systems in the registry',
-                                'approve_kb' => 'Approve manual changes for any system in the organisation',
-                            ])
-                            ->bulkToggleable(),
-                    ]),
+                ...$groups,
             ]);
+    }
+
+    /**
+     * Save the ticked permissions. Permissions the editor can't see (another module, or ones they
+     * don't hold themselves) are left as they were.
+     */
+    public static function syncPermissions(Role $role, array $data): void
+    {
+        $groups = collect(static::visibleGroups());
+        $shown = $groups->flatMap(fn ($g) => array_keys($g['permissions']))->all();
+        $ticked = $groups->keys()
+            ->flatMap(fn ($key) => (array) ($data["perm_{$key}"] ?? []))
+            ->intersect($shown)
+            ->all();
+        $kept = $role->permissions()->pluck('name')->diff($shown)->all();
+
+        $role->syncPermissions(array_values(array_unique([...$kept, ...$ticked])));
+    }
+
+    /** Form state for an existing role: perm_<group> => ticked permissions. */
+    public static function permissionState(Role $role): array
+    {
+        $has = $role->permissions()->pluck('name')->all();
+
+        return collect(static::visibleGroups())
+            ->mapWithKeys(fn ($g, $key) => ["perm_{$key}" => array_values(array_intersect(array_keys($g['permissions']), $has))])
+            ->all();
     }
 
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query) => $query->with('permissions:id,name'))
             ->columns([
                 TextColumn::make('name')
+                    ->label('Role')
                     ->searchable()
                     ->sortable()
+                    ->formatStateUsing(fn (string $state) => \Illuminate\Support\Str::headline($state))
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'super_admin' => 'danger',
                         'admin' => 'warning',
                         'worker' => 'success',
                         default => 'info',
+                    })
+                    ->description(fn (Role $record) => match ($record->name) {
+                        'super_admin' => 'Runs the platform: every organisation, module and setting.',
+                        'admin' => 'Runs an organisation: people, settings and reviews.',
+                        'worker' => 'Staff portal: own plans, inbox and manuals.',
+                        default => null,
                     }),
+                TextColumn::make('areas')
+                    ->label('Can work with')
+                    ->state(fn (Role $record) => collect(Permissions::GROUPS)
+                        ->filter(fn ($g) => $record->permissions->pluck('name')->intersect(array_keys($g['permissions']))->isNotEmpty())
+                        ->pluck('label')
+                        ->all())
+                    ->badge()
+                    ->color('gray')
+                    ->placeholder('Nothing yet'),
                 TextColumn::make('organisation.name')
-                    ->label('Scope')
+                    ->label('Available to')
                     ->default('All organisations')
-                    ->badge()
-                    ->color('gray'),
-                TextColumn::make('permissions_count')
-                    ->counts('permissions')
-                    ->label('Permissions')
-                    ->badge()
-                    ->color('gray'),
+                    ->visible(fn () => \App\Support\Platform::showsOrganisations()),
                 TextColumn::make('users_count')
                     ->counts('users')
-                    ->label('Users')
+                    ->label('People')
                     ->badge()
                     ->color('primary'),
                 TextColumn::make('created_at')

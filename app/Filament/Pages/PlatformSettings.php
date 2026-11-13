@@ -51,6 +51,7 @@ class PlatformSettings extends Page implements HasForms
         $this->form->fill([
             'company_mode' => Platform::mode(),
             'main_organisation_id' => $main?->id,
+            'company_name' => $main?->name,
             'modules' => $main ? Modules::enabledFor($main) : Modules::keys(),
         ]);
     }
@@ -81,8 +82,16 @@ class PlatformSettings extends Page implements HasForms
                                 ->mapWithKeys(fn (Organisation $o) => [$o->id => $o->name . ($o->is_active ? '' : ' (inactive)')]))
                             ->required()
                             ->live()
-                            ->afterStateUpdated(fn ($state, $set) => $set('modules', $state ? Modules::enabledFor((int) $state) : []))
+                            ->afterStateUpdated(function ($state, $set) {
+                                $set('modules', $state ? Modules::enabledFor((int) $state) : []);
+                                $set('company_name', $state ? Organisation::query()->find($state)?->name : null);
+                            })
                             ->helperText('In single company mode, the business this installation is for. In both modes, its documentation library is the one shown at the main address (/).'),
+                        \Filament\Forms\Components\TextInput::make('company_name')
+                            ->label('Company name')
+                            ->required()
+                            ->maxLength(255)
+                            ->helperText('The main organisation’s name, shown in the admin panel, the staff portal and the documentation library.'),
                         TextEntry::make('deactivated')
                             ->label('Will be made inactive')
                             ->visible(fn ($get) => $get('company_mode') === Platform::SINGLE && $this->othersActive($get('main_organisation_id'))->isNotEmpty())
@@ -91,7 +100,7 @@ class PlatformSettings extends Page implements HasForms
                             ->helperText('Their people can no longer sign in until you switch back to multiple companies and make them active again. Nothing is deleted.'),
                         TextEntry::make('company_details')
                             ->label('Company details')
-                            ->state('Name, logo, colours, timezone and documentation web address')
+                            ->state('Logo, colours, timezone and documentation web address')
                             ->url(fn ($get) => $get('main_organisation_id') ? OrganisationResource::getUrl('edit', ['record' => $get('main_organisation_id')]) : null)
                             ->color('primary')
                             ->visible(fn ($get) => filled($get('main_organisation_id'))),
@@ -116,6 +125,10 @@ class PlatformSettings extends Page implements HasForms
     {
         $data = $this->form->getState();
         $main = Organisation::query()->findOrFail($data['main_organisation_id']);
+
+        if (filled($data['company_name'] ?? null) && $data['company_name'] !== $main->name) {
+            $main->update(['name' => $data['company_name']]);
+        }
 
         app(PlatformService::class)->apply($data['company_mode'], $main, $data['modules'] ?? []);
 

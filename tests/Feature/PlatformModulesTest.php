@@ -217,7 +217,10 @@ class PlatformModulesTest extends TestCase
             ->set('data.company_mode', Platform::SINGLE)
             ->set('data.main_organisation_id', $this->admin->organisation_id)
             ->set('data.modules', [Modules::DOCS_LIBRARY])
+            ->set('data.company_name', 'Acme Schools')
             ->call('save');
+
+        $this->assertSame('Acme Schools', $this->admin->organisation->fresh()->name);
 
         $this->assertTrue(Platform::isSingle());
         $this->assertSame($this->admin->organisation_id, Platform::mainOrganisation()->id);
