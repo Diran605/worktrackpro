@@ -72,8 +72,12 @@ class WorkSessionController extends Controller
             ]);
         }
 
+        // When attendance is tied to work tracking, unfinished tasks are settled and timers stopped
+        // before the day ends. Otherwise clocking out only records the time.
+        $linked = \App\Support\Modules::attendanceLinkedToWork($user->organisation_id);
+
         // Plans already "left for now" today don't block clock-out.
-        $incompletePlans = DailyPlan::query()
+        $incompletePlans = !$linked ? collect() : DailyPlan::query()
             ->where('user_id', $user->id)
             ->whereDate('date', $today)
             ->where('status', PlanStatus::Pending->value)
@@ -89,7 +93,9 @@ class WorkSessionController extends Controller
         }
 
         // Log any time still on a running or paused timer before the session closes.
-        $this->timers->stopAllForUser($user->id, StopReason::ClockOut);
+        if ($linked) {
+            $this->timers->stopAllForUser($user->id, StopReason::ClockOut);
+        }
 
         $clockOutAt = now();
 

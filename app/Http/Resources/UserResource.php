@@ -40,6 +40,18 @@ class UserResource extends JsonResource
             'permissions' => $this->whenLoaded('permissions', function() {
                 return $this->getAllPermissions()->pluck('name');
             }),
+            // Only for the signed-in user (login / me): the modules the portal may show.
+            'modules' => $this->when(
+                $request->user()?->id === $this->id || $request->routeIs('api.auth.login'),
+                fn () => $this->resource->hasRole('super_admin')
+                    ? \App\Support\Modules::keys()
+                    : \App\Support\Modules::enabledFor($this->organisation_id)
+            ),
+            // Clock in before plans/timers? (both modules, and the organisation links them)
+            'attendance_linked' => $this->when(
+                $request->user()?->id === $this->id || $request->routeIs('api.auth.login'),
+                fn () => \App\Support\Modules::attendanceLinkedToWork($this->organisation_id)
+            ),
             // Only for the signed-in user (login / me): whether to show the Command Center link.
             'can_access_admin' => $this->when(
                 $request->user()?->id === $this->id || $request->routeIs('api.auth.login'),

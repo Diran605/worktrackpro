@@ -12,7 +12,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // "module:<key>": the route belongs to a module the organisation must have (App\Support\Modules).
+        $middleware->alias(['module' => \App\Http\Middleware\EnsureModuleEnabled::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

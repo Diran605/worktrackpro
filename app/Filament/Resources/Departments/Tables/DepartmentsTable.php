@@ -44,7 +44,7 @@ class DepartmentsTable
                 \Filament\Tables\Filters\SelectFilter::make('organisation_id')
                     ->relationship('organisation', 'name')
                     ->label('Organisation')
-                    ->hidden(fn () => !auth()->user()->hasRole('super_admin')),
+                    ->hidden(fn () => !\App\Support\Platform::showsOrganisations()),
                 TrashedFilter::make(),
             ])
             ->recordActions([

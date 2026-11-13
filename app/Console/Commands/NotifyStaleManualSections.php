@@ -19,7 +19,8 @@ class NotifyStaleManualSections extends Command
         $cutoff = now()->subDays($days);
         $notified = 0;
 
-        System::query()->where('status', '!=', 'retired')->each(function (System $system) use ($inbox, $cutoff, $days, &$notified) {
+        // Only organisations with the Knowledge Base module.
+        System::query()->where('status', '!=', 'retired')->whereIn('organisation_id', \Illuminate\Support\Facades\DB::table('organisation_modules')->where('module', \App\Support\Modules::KNOWLEDGE)->select('organisation_id'))->each(function (System $system) use ($inbox, $cutoff, $days, &$notified) {
             $stale = ManualSection::query()
                 ->where('system_id', $system->id)
                 ->published()

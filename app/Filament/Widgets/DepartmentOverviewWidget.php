@@ -16,7 +16,7 @@ class DepartmentOverviewWidget extends StatsOverviewWidget
     public static function canView(): bool
     {
         $user = auth()->user();
-        return $user && $user->hasRole('admin') && $user->department_id;
+        return $user && $user->hasRole('admin') && $user->department_id && \App\Support\Modules::allows(\App\Support\Modules::WORK_TRACKING);
     }
 
     protected function getStats(): array

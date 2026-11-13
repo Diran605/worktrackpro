@@ -24,6 +24,14 @@ use Illuminate\Database\Eloquent\Model;
  */
 class DocsAudienceResource extends Resource
 {
+    // Part of a module: hidden (and 403) for organisations that don't have it.
+    use \App\Filament\Concerns\BelongsToModule;
+
+    public static function module(): string
+    {
+        return \App\Support\Modules::DOCS_LIBRARY;
+    }
+
     use \App\Filament\Concerns\EnforcesRecordAccess;
 
     protected static ?string $model = DocsAudience::class;
@@ -104,7 +112,7 @@ class DocsAudienceResource extends Resource
                 TextColumn::make('sections_count')->label('Chapters')->numeric(),
                 TextColumn::make('organisation.name')
                     ->label('Organisation')
-                    ->visible(fn () => auth()->user()?->hasRole('super_admin')),
+                    ->visible(fn () => \App\Support\Platform::showsOrganisations()),
             ])
             ->recordActions([
                 EditAction::make(),

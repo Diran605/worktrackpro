@@ -29,6 +29,8 @@ class CloseAbandonedSessions extends Command
             ->when($date, fn ($q) => $q->whereDate('date', '<=', $date))
             ->where('status', SessionStatus::Active->value)
             ->whereNull('clock_out')
+            // Only organisations with the Attendance module.
+            ->whereIn('organisation_id', \Illuminate\Support\Facades\DB::table('organisation_modules')->where('module', \App\Support\Modules::ATTENDANCE)->select('organisation_id'))
             ->get();
 
         $closed = 0;
@@ -38,7 +40,10 @@ class CloseAbandonedSessions extends Command
                 continue;
             }
 
-            $timers->stopAllForUser($session->user_id, StopReason::SystemTimeout, verified: false);
+            // Timers belong to the session only when attendance is tied to work tracking.
+            if (\App\Support\Modules::attendanceLinkedToWork((int) $session->organisation_id)) {
+                $timers->stopAllForUser($session->user_id, StopReason::SystemTimeout, verified: false);
+            }
 
             // Close at the last recorded activity instead of "now", so forgotten sessions don't inflate hours.
             $closeAt = $this->lastActivityAt($session);

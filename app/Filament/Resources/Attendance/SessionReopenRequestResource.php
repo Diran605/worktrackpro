@@ -18,6 +18,14 @@ use Illuminate\Database\Eloquent\Builder;
 
 class SessionReopenRequestResource extends Resource
 {
+    // Part of a module: hidden (and 403) for organisations that don't have it.
+    use \App\Filament\Concerns\BelongsToModule;
+
+    public static function module(): string
+    {
+        return \App\Support\Modules::ATTENDANCE;
+    }
+
     protected static ?string $model = SessionReopenRequest::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedLifebuoy;

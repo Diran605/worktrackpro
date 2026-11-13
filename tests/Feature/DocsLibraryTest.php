@@ -136,6 +136,7 @@ class DocsLibraryTest extends TestCase
 
     public function test_other_organisations_are_served_under_org_slug_and_custom_domains(): void
     {
+        \App\Support\Platform::set('company_mode', \App\Support\Platform::MULTI);
         $other = Organisation::factory()->create(['slug' => 'globex', 'name' => 'Globex', 'docs_domain' => 'docs.globex.test']);
         System::create(['organisation_id' => $other->id, 'name' => 'Globex CRM', 'library_visibility' => System::LIBRARY_PUBLIC]);
 

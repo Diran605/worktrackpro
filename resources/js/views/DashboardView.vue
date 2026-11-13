@@ -7,15 +7,16 @@
             @resolve="handleResolveCarryOver"
         />
 
-        <!-- Attendance banner -->
-        <div class="mb-4 p-4 rounded-2xl border shadow-sm"
+        <!-- Attendance banner (Attendance module) -->
+        <div v-if="hasAttendance" class="mb-4 p-4 rounded-2xl border shadow-sm"
              :class="sessionStore.isClockedIn ? 'bg-emerald-50 border-emerald-200' : (sessionStore.isSystemClosed ? 'bg-amber-50 border-amber-200' : 'bg-white border-gray-100')">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>
                     <div class="text-sm font-semibold text-gray-900">
                         <span v-if="sessionStore.isClockedIn">You are clocked in.</span>
                         <span v-else-if="sessionStore.isSystemClosed">Your session was auto-closed.</span>
-                        <span v-else>Clock in to unlock plans and timers.</span>
+                        <span v-else-if="linked">Clock in to unlock plans and timers.</span>
+                        <span v-else>Clock in to record your working hours.</span>
                     </div>
                     <div class="text-xs text-gray-600 mt-0.5" v-if="sessionStore.currentSession?.clock_in">
                         Started at {{ new Date(sessionStore.currentSession.clock_in).toLocaleTimeString() }}
@@ -55,24 +56,32 @@
                 <p class="text-sm text-gray-500 mt-1 capitalize">{{ authStore.user?.roles?.[0]?.name?.replace('_', ' ') || 'Worker' }} • {{ authStore.user?.department?.name || authStore.user?.organisation?.name }}</p>
             </div>
             
-            <!-- Quick Actions (Worker Level Action) -->
-            <div class="mt-4 md:mt-0 flex gap-3">
+            <!-- Quick Actions (Work Tracking module) -->
+            <div v-if="hasWork" class="mt-4 md:mt-0 flex gap-3">
                 <router-link to="/plans"
-                             :class="sessionStore.isClockedIn ? 'inline-flex items-center justify-center rounded-xl border-2 border-teal-50 px-4 py-2 bg-white text-sm font-semibold text-teal-600 hover:bg-teal-50 hover:border-teal-100 transition-all shadow-sm' : 'inline-flex items-center justify-center rounded-xl border-2 border-gray-100 px-4 py-2 bg-gray-50 text-sm font-semibold text-gray-400 cursor-not-allowed'">
+                             :class="unlocked ? 'inline-flex items-center justify-center rounded-xl border-2 border-teal-50 px-4 py-2 bg-white text-sm font-semibold text-teal-600 hover:bg-teal-50 hover:border-teal-100 transition-all shadow-sm' : 'inline-flex items-center justify-center rounded-xl border-2 border-gray-100 px-4 py-2 bg-gray-50 text-sm font-semibold text-gray-400 cursor-not-allowed'">
                     <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5v2m6-2v2"/>
                     </svg>
                     Daily Plans
                 </router-link>
                 <router-link to="/logs"
-                             :class="sessionStore.isClockedIn ? 'inline-flex items-center justify-center rounded-xl px-4 py-2 bg-teal-600 text-sm font-semibold text-white hover:bg-teal-700 shadow-md shadow-teal-200 transition-all' : 'inline-flex items-center justify-center rounded-xl px-4 py-2 bg-gray-200 text-sm font-semibold text-gray-500 cursor-not-allowed'">
+                             :class="unlocked ? 'inline-flex items-center justify-center rounded-xl px-4 py-2 bg-teal-600 text-sm font-semibold text-white hover:bg-teal-700 shadow-md shadow-teal-200 transition-all' : 'inline-flex items-center justify-center rounded-xl px-4 py-2 bg-gray-200 text-sm font-semibold text-gray-500 cursor-not-allowed'">
                     <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     Activity Logs
                 </router-link>
             </div>
+            <!-- Knowledge base shortcut, for organisations without Work Tracking -->
+            <div v-else-if="authStore.hasModule('knowledge')" class="mt-4 md:mt-0">
+                <router-link :to="{ name: 'Knowledge' }" class="inline-flex items-center justify-center rounded-xl px-4 py-2 bg-teal-600 text-sm font-semibold text-white hover:bg-teal-700 shadow-md shadow-teal-200 transition-all">
+                    Open the Knowledge Base
+                </router-link>
+            </div>
         </div>
+
+        <template v-if="hasWork">
 
         <!-- Filters / Week Selector -->
         <div class="mb-6 flex justify-between items-center">
@@ -163,6 +172,7 @@
             </div>
 
         </div>
+        </template>
     </div>
 </template>
 
@@ -180,6 +190,13 @@ const weekLabel = ref('');
 const loading = ref(true);
 
 const currentOffset = ref(0); // 0 = this week, -1 = last week
+
+// Only the parts of the modules this organisation has.
+const hasWork = computed(() => authStore.hasModule('work_tracking'));
+const hasAttendance = computed(() => authStore.hasModule('attendance'));
+// Clocking in is tied to plans and timers (both modules, and the organisation links them).
+const linked = computed(() => !!authStore.user?.attendance_linked);
+const unlocked = computed(() => !linked.value || sessionStore.isClockedIn);
 
 const isCurrentWeek = computed(() => currentOffset.value === 0);
 
@@ -231,9 +248,13 @@ const getPercentage = (value, total) => {
 };
 
 onMounted(() => {
-    sessionStore.fetchCurrentSession();
-    sessionStore.fetchPendingCarryOvers();
-    fetchDashboardStats();
+    if (hasAttendance.value) sessionStore.fetchCurrentSession();
+    if (hasWork.value) {
+        sessionStore.fetchPendingCarryOvers();
+        fetchDashboardStats();
+    } else {
+        loading.value = false;
+    }
 });
 
 const handleClockIn = async () => {

@@ -27,6 +27,14 @@ use Illuminate\Validation\ValidationException;
  */
 class ManualSectionResource extends Resource
 {
+    // Part of a module: hidden (and 403) for organisations that don't have it.
+    use \App\Filament\Concerns\BelongsToModule;
+
+    public static function module(): string
+    {
+        return \App\Support\Modules::KNOWLEDGE;
+    }
+
     // canEdit()/canDelete() below are enforced on the pages too, not just used to hide buttons.
     use \App\Filament\Concerns\EnforcesRecordAccess;
 
@@ -114,6 +122,7 @@ class ManualSectionResource extends Resource
                     ->color(fn ($state) => $state === ManualSection::STATUS_PUBLISHED ? 'success' : 'gray'),
                 TextColumn::make('visibility')
                     ->label('Library')
+                    ->visible(fn () => \App\Support\Modules::allows(\App\Support\Modules::DOCS_LIBRARY))
                     ->badge()
                     ->icon(fn ($state) => $state === ManualSection::VISIBILITY_RESTRICTED ? 'heroicon-m-lock-closed' : null)
                     ->formatStateUsing(fn ($state) => $state === ManualSection::VISIBILITY_RESTRICTED ? 'Restricted' : 'As the manual')
@@ -121,6 +130,7 @@ class ManualSectionResource extends Resource
                     ->tooltip('Restricted chapters (and everything under them) can only be read by staff and people whose access code includes restricted chapters.'),
                 TextColumn::make('audiences.name')
                     ->label('For')
+                    ->visible(fn () => \App\Support\Modules::allows(\App\Support\Modules::DOCS_LIBRARY))
                     ->badge()
                     ->color('info')
                     ->placeholder('Everyone')
@@ -179,6 +189,7 @@ class ManualSectionResource extends Resource
                         )),
                     Action::make('audiences')
                         ->label('Who is it for…')
+                        ->visible(fn () => \App\Support\Modules::allows(\App\Support\Modules::DOCS_LIBRARY))
                         ->icon('heroicon-o-user-group')
                         ->modalHeading('Who is this part of the manual for?')
                         ->modalDescription('In the documentation library, a chapter meant for audiences (and everything under it) can only be read by staff and by access codes that open one of them. On the product page it is listed under each audience. Leave empty for everyone.')
@@ -203,7 +214,7 @@ class ManualSectionResource extends Resource
                     Action::make('restrict')
                         ->label('Make restricted')
                         ->icon('heroicon-o-lock-closed')
-                        ->visible(fn (ManualSection $record) => $record->visibility !== ManualSection::VISIBILITY_RESTRICTED)
+                        ->visible(fn (ManualSection $record) => \App\Support\Modules::allows(\App\Support\Modules::DOCS_LIBRARY) && $record->visibility !== ManualSection::VISIBILITY_RESTRICTED)
                         ->requiresConfirmation()
                         ->modalDescription('In the documentation library, this section and its sub-sections will only be readable by staff and by people whose access code includes restricted chapters. Staff in the portal are not affected.')
                         ->action(fn (ManualSection $record) => self::run(
@@ -213,7 +224,7 @@ class ManualSectionResource extends Resource
                     Action::make('unrestrict')
                         ->label('Remove restriction')
                         ->icon('heroicon-o-lock-open')
-                        ->visible(fn (ManualSection $record) => $record->visibility === ManualSection::VISIBILITY_RESTRICTED)
+                        ->visible(fn (ManualSection $record) => \App\Support\Modules::allows(\App\Support\Modules::DOCS_LIBRARY) && $record->visibility === ManualSection::VISIBILITY_RESTRICTED)
                         ->action(fn (ManualSection $record) => self::run(
                             fn () => $record->update(['visibility' => ManualSection::VISIBILITY_INHERIT]),
                             'Restriction removed'

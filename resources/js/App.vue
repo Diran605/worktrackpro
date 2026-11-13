@@ -25,14 +25,14 @@
                     Dashboard
                 </router-link>
 
-                <router-link :to="{ name: 'DailyPlans' }" active-class="bg-teal-50 text-teal-700 font-semibold" class="text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all">
+                <router-link v-if="hasModule('work_tracking')" :to="{ name: 'DailyPlans' }" active-class="bg-teal-50 text-teal-700 font-semibold" class="text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all">
                     <svg class="w-5 h-5 mr-3 shrink-0 transition-colors" :class="$route.name === 'DailyPlans' ? 'text-teal-600' : 'text-gray-400 group-hover:text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5v2m6-2v2"/>
                     </svg>
                     Daily Plans
                 </router-link>
 
-                <router-link :to="{ name: 'ActivityLogs' }" active-class="bg-teal-50 text-teal-700 font-semibold" class="text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all">
+                <router-link v-if="hasModule('work_tracking')" :to="{ name: 'ActivityLogs' }" active-class="bg-teal-50 text-teal-700 font-semibold" class="text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all">
                     <svg class="w-5 h-5 mr-3 shrink-0 transition-colors" :class="$route.name === 'ActivityLogs' ? 'text-teal-600' : 'text-gray-400 group-hover:text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
@@ -49,21 +49,21 @@
                     </span>
                 </router-link>
 
-                <router-link :to="{ name: 'RecurringTasks' }" active-class="bg-teal-50 text-teal-700 font-semibold" class="text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all">
+                <router-link v-if="hasModule('work_tracking')" :to="{ name: 'RecurringTasks' }" active-class="bg-teal-50 text-teal-700 font-semibold" class="text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all">
                     <svg class="w-5 h-5 mr-3 shrink-0 transition-colors" :class="$route.name === 'RecurringTasks' ? 'text-teal-600' : 'text-gray-400 group-hover:text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M3 11h18M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                     Recurring Tasks
                 </router-link>
 
-                <router-link v-if="canViewKnowledge" :to="{ name: 'Knowledge' }" :class="isKnowledgeRoute ? 'bg-teal-50 text-teal-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'" class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all">
+                <router-link v-if="canViewKnowledge && hasModule('knowledge')" :to="{ name: 'Knowledge' }" :class="isKnowledgeRoute ? 'bg-teal-50 text-teal-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'" class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all">
                     <svg class="w-5 h-5 mr-3 shrink-0 transition-colors" :class="isKnowledgeRoute ? 'text-teal-600' : 'text-gray-400 group-hover:text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                     </svg>
                     Knowledge
                 </router-link>
 
-                <div v-if="isAdmin">
+                <div v-if="isAdmin && hasModule('work_tracking')">
                     <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mt-6 mb-4 px-3">Management</div>
 
                     <router-link :to="{ name: 'Team' }" active-class="bg-blue-50 text-blue-700 font-semibold" class="text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all">
@@ -155,11 +155,11 @@
             </div>
              <nav class="flex items-center space-x-4">
                 <router-link :to="{ name: 'Dashboard' }" class="text-gray-500 hover:text-teal-600 font-medium">Dash</router-link>
-                <router-link :to="{ name: 'DailyPlans' }" class="text-gray-500 hover:text-teal-600 font-medium">Plans</router-link>
-                <router-link :to="{ name: 'ActivityLogs' }" class="text-gray-500 hover:text-teal-600 font-medium">Logs</router-link>
-                <router-link :to="{ name: 'RecurringTasks' }" class="text-gray-500 hover:text-teal-600 font-medium">Recurring</router-link>
-                <router-link v-if="canViewKnowledge" :to="{ name: 'Knowledge' }" class="text-gray-500 hover:text-teal-600 font-medium">Knowledge</router-link>
-                <router-link v-if="isAdmin" :to="{ name: 'Team' }" class="text-gray-500 hover:text-blue-600 font-medium">Team</router-link>
+                <router-link v-if="hasModule('work_tracking')" :to="{ name: 'DailyPlans' }" class="text-gray-500 hover:text-teal-600 font-medium">Plans</router-link>
+                <router-link v-if="hasModule('work_tracking')" :to="{ name: 'ActivityLogs' }" class="text-gray-500 hover:text-teal-600 font-medium">Logs</router-link>
+                <router-link v-if="hasModule('work_tracking')" :to="{ name: 'RecurringTasks' }" class="text-gray-500 hover:text-teal-600 font-medium">Recurring</router-link>
+                <router-link v-if="canViewKnowledge && hasModule('knowledge')" :to="{ name: 'Knowledge' }" class="text-gray-500 hover:text-teal-600 font-medium">Knowledge</router-link>
+                <router-link v-if="isAdmin && hasModule('work_tracking')" :to="{ name: 'Team' }" class="text-gray-500 hover:text-blue-600 font-medium">Team</router-link>
                 <router-link :to="{ name: 'Settings' }" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 </router-link>
@@ -195,6 +195,8 @@ const route = useRoute();
 const unreadCount = ref(0);
 const inboxStore = useInboxStore();
 
+// Modules the organisation has; menu items of other modules are not shown.
+const hasModule = (module) => authStore.hasModule(module);
 const canViewKnowledge = computed(() => (authStore.user?.permissions || []).includes('view_kb'));
 const isKnowledgeRoute = computed(() => route.path.startsWith('/knowledge'));
 const canAccessAdmin = computed(() => !!authStore.user?.can_access_admin);

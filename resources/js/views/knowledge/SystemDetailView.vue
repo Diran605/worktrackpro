@@ -103,7 +103,7 @@
                                     class="px-4 py-2 rounded-xl text-sm font-semibold bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
                                 ⬇ Download PDF
                             </button>
-                            <button @click="trackStudy" :disabled="tracking"
+                            <button v-if="authStore.hasModule('work_tracking')" @click="trackStudy" :disabled="tracking"
                                     class="px-4 py-2 rounded-xl text-sm font-semibold bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50">
                                 ⏱ Track study time
                             </button>
@@ -163,10 +163,12 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '../../lib/axios';
+import { useAuthStore } from '../../stores/auth';
 import ManualTree from '../../components/knowledge/ManualTree.vue';
 import ExportManualDialog from '../../components/knowledge/ExportManualDialog.vue';
 import { openInLibrary } from '../../lib/docsLink';
 
+const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 const slug = computed(() => route.params.slug);

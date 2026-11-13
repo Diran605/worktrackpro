@@ -59,11 +59,35 @@ A super admin is created too; see `database/seeders/DatabaseSeeder.php`. Change 
 3. **Knowledge → Systems.** Add your internal systems and their owners.
 4. **Documentation Library.** Set "In the library" on each system (Public, Restricted or Not in library), create categories, and fill in the library title and announcements under **Configuration → Organisation Settings**.
 
+## Modules and company mode
+
+WorkTrack Pro is sold by module. A super admin chooses each organisation's modules (**Organisations → Modules**, or **Configuration → Platform Settings** for the main organisation):
+
+| Module | Contains |
+|---|---|
+| Core (always on) | Users, departments, roles, organisation settings, inbox, audit log |
+| Work Tracking | Daily plans, timers, activity logs, recurring tasks, task templates, work types, projects & clients, team view, Team Pulse |
+| Attendance | Clock-in/out, sessions, reopen requests, Attendance Overview |
+| HR Letters | Letter templates, letterheads, issued letters |
+| Knowledge Base | Systems, manuals, approvals, structure, staff PDF manuals |
+| Documentation Library | The public library (needs Knowledge Base) |
+
+A switched-off module is invisible to that organisation (menus, pages, API, scheduled jobs, library); its data is kept. Super admins see every module.
+
+With both Attendance and Work Tracking, **Organisation Settings → Link attendance to work tracking** decides whether people must clock in before plans and timers (and whether clocking out stops timers and asks about unfinished tasks). Off: attendance is only a record of working hours.
+
+**Company mode** (Platform Settings): *single company* hides everything about choosing organisations (Organisations menu, organisation columns, `/org/{slug}` library addresses) and makes other organisations inactive; *multiple companies* hosts several separate businesses. The data model is the same in both, so switching is just a setting. From the command line:
+
+```bash
+php artisan worktrack:platform:mode single --main=your-org-slug
+php artisan worktrack:platform:mode multi
+```
+
 ## Documentation library
 
 Each organisation has a public library of its manuals, laid out like a vendor documentation site: products (systems) by category, a product page with its guides grouped by audience, a reader with a contents tree, search, and "What's changed" per version. (PDF download is only offered in the staff portal.)
 
-- **Addresses.** The default organisation (`DOCS_DEFAULT_ORGANISATION`, or the first active one) is served at `/`. Every organisation is also at `/org/{slug}`. A super admin can give an organisation its own domain (**Organisations → Documentation library address**, e.g. `docs.example.com`); point the domain's DNS at the server and make sure the web server answers for it.
+- **Addresses.** The main organisation (Platform Settings) is served at `/`. In multiple companies mode every organisation is also at `/org/{slug}`. A super admin can give an organisation its own domain (**Organisations → Documentation library address**, e.g. `docs.example.com`); point the domain's DNS at the server and make sure the web server answers for it.
 - **Who can read what.** *Public* manuals are open to everyone; *Restricted* manuals are listed but need a staff sign-in or an access code; *Not in library* manuals stay in the staff portal. Individual chapters can be restricted under **Knowledge → Manual Structure**.
 - **Audiences** (**Documentation Library → Audiences**) are groups of readers, e.g. *Teachers* or *Finance*. Mark chapters for one or more audiences under **Knowledge → Manual Structure → Who is it for…**; the chapter and everything under it can then only be read by staff and by access codes that open one of those audiences. Product pages list chapters as guide cards under "General" and each audience.
 - **Access codes** (**Documentation Library → Access Codes**) are for clients and other readers outside the staff. Each code opens chosen manuals, optionally including restricted chapters, and can expire or be turned off at any time. Readers can also ask for access from a locked page; requests arrive in the owners' inbox and under **Access Requests**.
@@ -104,7 +128,7 @@ Besides the standard Laravel settings, `.env` supports:
 |---|---|---|
 | `SANCTUM_EXPIRATION` | `10080` | Portal login lifetime in minutes (7 days) |
 | `QPDF_PATH` | `qpdf` | Path to the qpdf binary |
-| `DOCS_DEFAULT_ORGANISATION` | first active organisation | Slug of the organisation whose library is served at `/` |
+| `DOCS_DEFAULT_ORGANISATION` | first active organisation | Fallback for the library at `/` if no main organisation is set in Platform Settings |
 | `DOCS_CODE_SESSION_DAYS` | `30` | How long an access code stays active in a reader's browser |
 | `KNOWLEDGE_STALE_AFTER_DAYS` | `90` | When manual sections count as needing a re-check |
 | `KNOWLEDGE_MAX_IMAGE_KB` / `_PDF_KB` / `_DOCX_KB` | 5 MB / 50 MB / 20 MB | Upload limits for the knowledge base |
@@ -137,5 +161,5 @@ Feature tests cover timers, clock-out and carry-over, authorization, timezones, 
 
 ## Project notes
 
-- `implementation_plan_knowledge_base.md`: Knowledge & Readiness module plan and status (Phases 0–3 and 3B done)
+- `implementation_plan_knowledge_base.md`: Knowledge & Readiness module plan and status (Phases 0–3, 3B and 3C done)
 - `implementation_plan_phase6.md`: earlier feature addendum plan (attendance, timers, recurring tasks, inbox, letters)

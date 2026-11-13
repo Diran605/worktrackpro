@@ -17,6 +17,14 @@ use Illuminate\Database\Eloquent\Builder;
 
 class ProjectClientResource extends Resource
 {
+    // Part of a module: hidden (and 403) for organisations that don't have it.
+    use \App\Filament\Concerns\BelongsToModule;
+
+    public static function module(): string
+    {
+        return \App\Support\Modules::WORK_TRACKING;
+    }
+
     protected static ?string $model = ProjectClient::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBriefcase;

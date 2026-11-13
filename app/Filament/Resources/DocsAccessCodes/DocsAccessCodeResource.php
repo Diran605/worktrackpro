@@ -36,6 +36,14 @@ use Illuminate\Database\Eloquent\Model;
  */
 class DocsAccessCodeResource extends Resource
 {
+    // Part of a module: hidden (and 403) for organisations that don't have it.
+    use \App\Filament\Concerns\BelongsToModule;
+
+    public static function module(): string
+    {
+        return \App\Support\Modules::DOCS_LIBRARY;
+    }
+
     use \App\Filament\Concerns\EnforcesRecordAccess;
 
     protected static ?string $model = DocsAccessCode::class;
@@ -201,7 +209,7 @@ class DocsAccessCodeResource extends Resource
                 TextColumn::make('last_used_at')->label('Last used')->since()->placeholder('Never')->sortable(),
                 TextColumn::make('organisation.name')
                     ->label('Organisation')
-                    ->visible(fn () => auth()->user()?->hasRole('super_admin')),
+                    ->visible(fn () => \App\Support\Platform::showsOrganisations()),
             ])
             ->filters([
                 TernaryFilter::make('is_active')->label('Active'),

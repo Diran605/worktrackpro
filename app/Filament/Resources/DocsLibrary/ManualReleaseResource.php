@@ -21,6 +21,14 @@ use Illuminate\Database\Eloquent\Model;
  */
 class ManualReleaseResource extends Resource
 {
+    // Part of a module: hidden (and 403) for organisations that don't have it.
+    use \App\Filament\Concerns\BelongsToModule;
+
+    public static function module(): string
+    {
+        return \App\Support\Modules::DOCS_LIBRARY;
+    }
+
     use \App\Filament\Concerns\ScopesToManagedSystems;
 
     protected static ?string $model = ManualRelease::class;

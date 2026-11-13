@@ -17,6 +17,14 @@ use Illuminate\Database\Eloquent\Builder;
 
 class CompanyLetterheadResource extends Resource
 {
+    // Part of a module: hidden (and 403) for organisations that don't have it.
+    use \App\Filament\Concerns\BelongsToModule;
+
+    public static function module(): string
+    {
+        return \App\Support\Modules::LETTERS;
+    }
+
     protected static ?string $model = CompanyLetterhead::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentText;

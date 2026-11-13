@@ -23,6 +23,14 @@ use Illuminate\Database\Eloquent\Model;
  */
 class SystemCategoryResource extends Resource
 {
+    // Part of a module: hidden (and 403) for organisations that don't have it.
+    use \App\Filament\Concerns\BelongsToModule;
+
+    public static function module(): string
+    {
+        return \App\Support\Modules::DOCS_LIBRARY;
+    }
+
     use \App\Filament\Concerns\EnforcesRecordAccess;
 
     protected static ?string $model = SystemCategory::class;
@@ -103,7 +111,7 @@ class SystemCategoryResource extends Resource
                 TextColumn::make('systems_count')->label('Systems')->numeric(),
                 TextColumn::make('organisation.name')
                     ->label('Organisation')
-                    ->visible(fn () => auth()->user()?->hasRole('super_admin')),
+                    ->visible(fn () => \App\Support\Platform::showsOrganisations()),
             ])
             ->recordActions([
                 EditAction::make(),

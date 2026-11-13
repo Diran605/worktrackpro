@@ -57,7 +57,8 @@ class ManualController extends Controller
             'data' => [
                 'system' => ['id' => $system->id, 'name' => $system->name, 'slug' => $system->slug],
                 'manual_version' => $system->manual_version,
-                'library' => $this->libraryInfo($system),
+                // Only for organisations with the Documentation Library module.
+                'library' => \App\Support\Modules::organisationHas($system->organisation_id, \App\Support\Modules::DOCS_LIBRARY) ? $this->libraryInfo($system) : null,
                 'unreleased_changes' => $request->user()->can('approve', $system) ? $system->unreleasedRevisions()->count() : null,
                 'tree' => $mapTree($this->manuals->publishedTree($system)),
                 'progress' => $progress,
@@ -91,7 +92,7 @@ class ManualController extends Controller
                 'title' => $section->title,
                 'kind' => $section->kind,
                 'restricted' => $section->isRestricted(),
-                'library_path' => $system->isInLibrary()
+                'library_path' => $system->isInLibrary() && \App\Support\Modules::organisationHas($system->organisation_id, \App\Support\Modules::DOCS_LIBRARY)
                     ? DocsContext::pathOf(DocsContext::mainSite($system->organisation)->section($system, $section))
                     : null,
                 'version' => $section->currentVersion(),

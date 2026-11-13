@@ -39,6 +39,8 @@ class Organisation extends Model
     {
         static::saved(fn (Organisation $org) => \App\Support\LocalTime::forget($org->id));
         static::created(fn (Organisation $org) => WorkType::createDefaultsFor($org->id));
+        // New organisations start with every module; the super admin narrows it down.
+        static::created(fn (Organisation $org) => \App\Support\Modules::setFor($org, \App\Support\Modules::keys()));
     }
 
     public function localNow(): \Carbon\CarbonImmutable

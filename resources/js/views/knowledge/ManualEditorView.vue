@@ -69,7 +69,7 @@
                     <button v-if="change" type="button" @click="discard" :disabled="busy" class="text-sm text-red-600 hover:text-red-700 sm:mr-auto py-2">Delete draft</button>
                     <span v-else class="sm:mr-auto"></span>
 
-                    <button type="button" @click="trackTime" :disabled="busy" title="Start a timer for this work (needs you to be clocked in)"
+                    <button v-if="authStore.hasModule('work_tracking')" type="button" @click="trackTime" :disabled="busy" title="Start a timer for this work"
                             class="px-4 py-2 rounded-xl text-sm font-semibold bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50">
                         ⏱ Track as work
                     </button>
@@ -91,9 +91,11 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import api from '../../lib/axios';
+import { useAuthStore } from '../../stores/auth';
 import RichEditor from '../../components/knowledge/RichEditor.vue';
 import PositionPicker from '../../components/knowledge/PositionPicker.vue';
 
+const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 const slug = computed(() => route.params.slug);

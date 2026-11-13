@@ -11,7 +11,7 @@ Turns company systems/projects from "knowledge in people's heads" into structure
 | 2 — Manuals | ✅ Done (2026-11-11) |
 | 3 — Manual generation (PDF) | ✅ Done (2026-11-13) |
 | 3B — Documentation Library (public docs site) | ✅ Done (2026-11-13). Library shows the last published version; audiences; no library PDF |
-| 3C — Platform: modules and company mode | In progress (2026-11-13) |
+| 3C — Platform: modules and company mode | Built (2026-11-13), awaiting merge. Attendance can be linked to work tracking or separate |
 | 4 — Competency & readiness | Not started |
 | 5 — Tickets & FAQ | Not started |
 | 6 — Insights | Not started |
@@ -316,7 +316,7 @@ Routing (old addresses redirect, `/staff` serves the portal); organisation resol
 
 Presets: **Full suite**, **Manuals only** (Knowledge + Library), **Work tracking only** (Work Tracking + Attendance).
 
-Without Attendance, timers don't require clocking in. Without Work Tracking, "track study/writing time" (which creates plan tasks) is hidden.
+**Attendance and Work Tracking, linked or separate** (decided 2026-11-13): with both modules, the organisation setting *Link attendance to work tracking* (default on, today's behaviour) ties them together: clock in before plans and timers; clocking out stops timers and asks about unfinished tasks; closing forgotten sessions stops timers. Off, or with only one of the two modules: attendance is only a record of working hours and timers need no clock-in. Without Work Tracking, "track study/writing time" (which creates plan tasks) is hidden.
 
 ### Where "off" is enforced
 - Admin panel: resources, pages and widgets of the module are hidden and their addresses answer 403.

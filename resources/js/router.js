@@ -25,19 +25,19 @@ const routes = [
         path: '/plans',
         name: 'DailyPlans',
         component: () => import('./views/plans/DailyPlansView.vue'),
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, module: 'work_tracking' }
     },
     {
         path: '/logs',
         name: 'ActivityLogs',
         component: () => import('./views/logs/ActivityLogsView.vue'),
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, module: 'work_tracking' }
     },
     {
         path: '/team',
         name: 'Team',
         component: () => import('./views/team/TeamView.vue'),
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, module: 'work_tracking' }
     },
     {
         path: '/settings',
@@ -56,44 +56,44 @@ const routes = [
         path: '/knowledge',
         name: 'Knowledge',
         component: () => import('./views/knowledge/SystemsView.vue'),
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, module: 'knowledge' }
     },
     {
         path: '/knowledge/contributions',
         name: 'MyContributions',
         component: () => import('./views/knowledge/MyContributionsView.vue'),
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, module: 'knowledge' }
     },
     {
         path: '/knowledge/:slug',
         name: 'SystemDetail',
         component: () => import('./views/knowledge/SystemDetailView.vue'),
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, module: 'knowledge' }
     },
     {
         path: '/knowledge/:slug/read/:sectionId',
         name: 'ManualReader',
         component: () => import('./views/knowledge/ManualReaderView.vue'),
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, module: 'knowledge' }
     },
     {
         // ?section=<id> edits a section, ?change=<id> continues a draft, neither starts a new section
         path: '/knowledge/:slug/write',
         name: 'ManualEditor',
         component: () => import('./views/knowledge/ManualEditorView.vue'),
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, module: 'knowledge' }
     },
     {
         path: '/knowledge/:slug/upload',
         name: 'ManualUpload',
         component: () => import('./views/knowledge/ManualUploadView.vue'),
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, module: 'knowledge' }
     },
     {
         path: '/recurring-tasks',
         name: 'RecurringTasks',
         component: () => import('./views/recurring/RecurringTasksView.vue'),
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true, module: 'work_tracking' }
     }
 ];
 
@@ -125,8 +125,13 @@ router.beforeEach(async (to, from, next) => {
         next(safeRedirect(to.query.redirect) || { name: 'Dashboard' });
     }
     else {
-        // Attendance gate: block plans/logs until clocked in
-        if (isAuthenticated && (to.name === 'DailyPlans' || to.name === 'ActivityLogs')) {
+        // Pages of a module the organisation doesn't have
+        if (isAuthenticated && to.meta.module && !authStore.hasModule(to.meta.module)) {
+            return next({ name: 'Dashboard' });
+        }
+
+        // Attendance gate: block plans/logs until clocked in (only for organisations that clock in)
+        if (isAuthenticated && authStore.user?.attendance_linked && (to.name === 'DailyPlans' || to.name === 'ActivityLogs')) {
             if (!sessionStore.currentSession && !sessionStore.loading) {
                 await sessionStore.fetchCurrentSession();
             }

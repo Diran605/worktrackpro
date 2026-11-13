@@ -19,6 +19,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class SystemResource extends Resource
 {
+    // Part of a module: hidden (and 403) for organisations that don't have it.
+    use \App\Filament\Concerns\BelongsToModule;
+
+    public static function module(): string
+    {
+        return \App\Support\Modules::KNOWLEDGE;
+    }
+
     // canEdit()/canDelete() below are enforced on the pages too, not just used to hide buttons.
     use \App\Filament\Concerns\EnforcesRecordAccess;
 

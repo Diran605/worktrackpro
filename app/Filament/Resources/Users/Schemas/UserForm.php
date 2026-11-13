@@ -17,7 +17,7 @@ class UserForm
                 Select::make('organisation_id')
                     ->relationship('organisation', 'name')
                     ->required()
-                    ->hidden(fn () => !auth()->user()->hasRole('super_admin')),
+                    ->hidden(fn () => !\App\Support\Platform::showsOrganisations()),
                 Select::make('department_id')
                     ->relationship(
                         'department',

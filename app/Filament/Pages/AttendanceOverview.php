@@ -43,7 +43,7 @@ class AttendanceOverview extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->can(Permissions::MANAGE_ATTENDANCE) ?? false;
+        return \App\Support\Modules::allows(\App\Support\Modules::ATTENDANCE) && (auth()->user()?->can(Permissions::MANAGE_ATTENDANCE) ?? false);
     }
 
     public function table(Table $table): Table
@@ -100,7 +100,7 @@ class AttendanceOverview extends Page implements HasTable
                 SelectFilter::make('department_id')
                     ->label('Department')
                     ->relationship('department', 'name', fn (Builder $query) => $query->where('organisation_id', auth()->user()->organisation_id))
-                    ->visible(fn () => auth()->user()->hasRole('super_admin')),
+                    ->visible(fn () => \App\Support\Platform::showsOrganisations()),
             ], layout: FiltersLayout::AboveContent)
             ->filtersFormColumns(3)
             ->deferFilters(false)

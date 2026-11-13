@@ -13,6 +13,10 @@ export const useAuthStore = defineStore('auth', {
         isAuthenticated: (state) => !!state.token,
         hasRole: (state) => (role) => {
              return state.user?.roles?.includes(role) || false;
+        },
+        // Modules the organisation has (work_tracking, attendance, letters, knowledge, docs_library).
+        hasModule: (state) => (module) => {
+            return (state.user?.modules || []).includes(module);
         }
     },
     

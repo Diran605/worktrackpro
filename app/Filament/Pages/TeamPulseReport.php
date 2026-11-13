@@ -32,7 +32,7 @@ class TeamPulseReport extends Page
     public static function canAccess(): bool
     {
         // Only super admin or admin can see reporting
-        return auth()->user()?->hasRole(['super_admin', 'admin']) ?? false;
+        return \App\Support\Modules::allows(\App\Support\Modules::WORK_TRACKING) && (auth()->user()?->hasRole(['super_admin', 'admin']) ?? false);
     }
 
     public function getViewData(): array

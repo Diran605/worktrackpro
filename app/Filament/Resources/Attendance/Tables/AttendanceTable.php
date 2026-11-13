@@ -57,7 +57,7 @@ class AttendanceTable
                 \Filament\Tables\Filters\SelectFilter::make('organisation_id')
                     ->relationship('user.organisation', 'name')
                     ->label('Organisation')
-                    ->hidden(fn () => !auth()->user()->hasRole('super_admin')),
+                    ->hidden(fn () => !\App\Support\Platform::showsOrganisations()),
                 \Filament\Tables\Filters\Filter::make('date')
                     ->form([
                         \Filament\Forms\Components\DatePicker::make('date'),

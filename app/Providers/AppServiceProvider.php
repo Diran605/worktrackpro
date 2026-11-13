@@ -13,6 +13,9 @@ class AppServiceProvider extends ServiceProvider
     {
         // One per request: built after ResolveDocsOrganisation has set the DocsContext.
         $this->app->scoped(\App\Services\DocsAccess::class);
+        // Read once per request (organisation modules, platform settings).
+        $this->app->scoped(\App\Support\Modules::class);
+        $this->app->scoped(\App\Support\Platform::class);
         // Shared by every docs view in a request, so the navigation is queried once.
         $this->app->scoped(\App\View\Composers\DocsNavigationComposer::class);
     }

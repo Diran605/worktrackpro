@@ -76,6 +76,7 @@ class SystemForm
                     ]),
 
                 Section::make('Documentation library')
+                    ->visible(fn () => \App\Support\Modules::allows(\App\Support\Modules::DOCS_LIBRARY))
                     ->description('Whether this manual appears in the public documentation library, and where.')
                     ->columns(2)
                     ->schema([
