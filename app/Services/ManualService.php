@@ -11,8 +11,11 @@ use App\Models\ManualSection;
 use App\Models\ManualSectionRevision;
 use App\Models\System;
 use App\Models\User;
+use App\Support\Qpdf;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -199,7 +202,7 @@ class ManualService
             $system,
             $system->approverIds(),
             "Manual change awaiting approval: {$system->name}",
-            "{$author->name} submitted \"{$change->title}\" (" . ManualChangeRequest::TYPE_LABELS[$change->type] . ") "
+            "{$author->name} submitted \"{$change->title}\" (" . $change->typeLabel() . ") "
                 . "for the {$system->name} manual.\n\nReview it in the admin panel under Knowledge > Manual Approvals.",
             $author->id,
         );
@@ -379,12 +382,17 @@ class ManualService
 
             $isTopLevel = $parentId === $change->proposed_parent_id;
 
+            // PDF import: the section gets its own file with just its pages (none = a heading only).
+            $file = $change->isPdfImport() && !empty($item['page_from'])
+                ? $this->cutImportPages($change, (int) $item['page_from'], (int) $item['page_to'])
+                : null;
+
             $section = ManualSection::create([
                 'system_id' => $change->system_id,
                 'parent_id' => $parentId,
                 'position' => $this->makeRoomAfter($change->system_id, $parentId, $isTopLevel ? $afterId : null),
                 'title' => $item['title'],
-                'kind' => ManualSection::KIND_WRITTEN,
+                'kind' => $file ? ManualSection::KIND_UPLOADED_PDF : ManualSection::KIND_WRITTEN,
                 'status' => ManualSection::STATUS_PUBLISHED,
                 'created_by' => $change->author_id,
                 'last_verified_at' => now(),
@@ -395,7 +403,11 @@ class ManualService
                 'manual_section_id' => $section->id,
                 'version' => 1,
                 'title' => $item['title'],
-                'body' => $item['body'] ?? '',
+                'body' => $file ? null : ($item['body'] ?? ''),
+                'file_path' => $file['path'] ?? null,
+                'file_name' => $file['name'] ?? null,
+                'file_size' => $file['size'] ?? null,
+                'page_count' => $file['pages'] ?? null,
                 'change_summary' => 'Imported from ' . ($change->file_name ?: 'Word document'),
                 'manual_version' => $manualVersion,
                 'author_id' => $change->author_id,
@@ -411,6 +423,29 @@ class ManualService
             $stack = array_filter($stack, fn ($d) => $d < $depth, ARRAY_FILTER_USE_KEY);
             $stack[$depth] = $section->id;
         }
+    }
+
+    /**
+     * Copy pages of a PDF import into their own file for one section.
+     *
+     * @return array{path: string, name: string, size: int, pages: int}
+     */
+    private function cutImportPages(ManualChangeRequest $change, int $from, int $to): array
+    {
+        $disk = Storage::disk(config('knowledge.disk'));
+        $path = "manual-files/{$change->system_id}/" . Str::uuid() . '.pdf';
+        $disk->makeDirectory(dirname($path));
+
+        Qpdf::extractPages($disk->path($change->file_path), $from, $to, $disk->path($path));
+
+        $base = Str::of($change->file_name ?: 'document.pdf')->beforeLast('.')->toString();
+
+        return [
+            'path' => $path,
+            'name' => Str::limit("{$base} (pages {$from}-{$to}).pdf", 250, ''),
+            'size' => $disk->size($path),
+            'pages' => $to - $from + 1,
+        ];
     }
 
     private function publishRevision(ManualSection $section, ManualChangeRequest $change, User $reviewer, ?string $manualVersion): void

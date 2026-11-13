@@ -20,7 +20,7 @@ class ManualChangeResource extends JsonResource
         return [
             'id' => $this->id,
             'type' => $this->type,
-            'type_label' => ManualChangeRequest::TYPE_LABELS[$this->type] ?? $this->type,
+            'type_label' => $this->resource->typeLabel(),
             'kind' => $this->kind,
             'title' => $this->title,
             'status' => $this->status,
@@ -54,8 +54,14 @@ class ManualChangeResource extends JsonResource
             ] : null,
             'import_sections' => $this->when(
                 $this->type === ManualChangeRequest::TYPE_IMPORT,
-                fn () => collect($this->importSections())->map(fn ($s) => ['title' => $s['title'], 'depth' => $s['depth']])->all()
+                fn () => collect($this->importSections())->map(fn ($s) => [
+                    'title' => $s['title'],
+                    'depth' => $s['depth'],
+                    'page_from' => $s['page_from'] ?? null,
+                    'page_to' => $s['page_to'] ?? null,
+                ])->all()
             ),
+            'from_bookmarks' => $this->when($this->type === ManualChangeRequest::TYPE_IMPORT, fn () => (bool) ($this->payload['from_bookmarks'] ?? false)),
             'submitted_at' => $this->submitted_at?->toIso8601String(),
             'reviewed_at' => $this->reviewed_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),

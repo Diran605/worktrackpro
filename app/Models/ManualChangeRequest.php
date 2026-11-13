@@ -37,7 +37,7 @@ class ManualChangeRequest extends Model
     public const TYPE_LABELS = [
         self::TYPE_CREATE => 'New section',
         self::TYPE_EDIT => 'Edit',
-        self::TYPE_IMPORT => 'Word import',
+        self::TYPE_IMPORT => 'Import',
     ];
 
     /** Statuses in which the author may still change the proposal. */
@@ -128,6 +128,22 @@ class ManualChangeRequest extends Model
     public function importSections(): array
     {
         return $this->payload['sections'] ?? [];
+    }
+
+    /** A PDF split into sections by page range (rather than a Word import). */
+    public function isPdfImport(): bool
+    {
+        return $this->type === self::TYPE_IMPORT && $this->kind === ManualSection::KIND_UPLOADED_PDF;
+    }
+
+    /** "Word import" / "PDF import" / "New section" / "Edit". */
+    public function typeLabel(): string
+    {
+        if ($this->type === self::TYPE_IMPORT) {
+            return $this->isPdfImport() ? 'PDF import' : 'Word import';
+        }
+
+        return self::TYPE_LABELS[$this->type] ?? $this->type;
     }
 
     /** Audit entries belong to the system's organisation. */

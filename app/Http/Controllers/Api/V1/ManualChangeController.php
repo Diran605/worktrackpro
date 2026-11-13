@@ -11,8 +11,10 @@ use App\Models\ManualSection;
 use App\Models\System;
 use App\Services\DocxImportService;
 use App\Services\ManualService;
+use App\Services\PdfImportService;
 use App\Support\ManualContent;
 use App\Support\PdfInfo;
+use App\Support\Qpdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -206,15 +208,30 @@ class ManualChangeController extends Controller
             Str::uuid() . '.pdf',
             config('knowledge.disk')
         );
+        $pageFrom = $request->integer('page_from') ?: null;
+        $pageTo = $request->integer('page_to') ?: null;
+        $size = $file->getSize();
+
+        // Only part of the PDF: keep just those pages, so readers see exactly that part.
+        if (($pageFrom || $pageTo) && $pageCount && Qpdf::available()) {
+            $disk = Storage::disk(config('knowledge.disk'));
+            $full = $disk->path($path);
+            $cut = $full . '.cut.pdf';
+            Qpdf::extractPages($full, $pageFrom ?: 1, $pageTo ?: $pageCount, $cut);
+            rename($cut, $full);
+            $pageCount = ($pageTo ?: $pageCount) - ($pageFrom ?: 1) + 1;
+            $pageFrom = $pageTo = null;
+            $size = $disk->size($path);
+        }
 
         $change->update([
             'kind' => ManualSection::KIND_UPLOADED_PDF,
             'file_path' => $path,
             'file_name' => Str::limit($file->getClientOriginalName(), 250, ''),
-            'file_size' => $file->getSize(),
+            'file_size' => $size,
             'page_count' => $pageCount,
-            'page_from' => $request->integer('page_from') ?: null,
-            'page_to' => $request->integer('page_to') ?: null,
+            'page_from' => $pageFrom,
+            'page_to' => $pageTo,
             'title' => $change->title === 'Untitled section'
                 ? Str::of($file->getClientOriginalName())->beforeLast('.')->limit(250, '')->toString()
                 : $change->title,
@@ -261,6 +278,86 @@ class ManualChangeController extends Controller
         ]);
 
         return (new ManualChangeResource($change->load('system:id,name,slug')))->response()->setStatusCode(201);
+    }
+
+    /**
+     * Upload a PDF that has several chapters: it is split into proposed sections by page range,
+     * from its bookmarks. The author can change the split (updateImportSections) before submitting.
+     */
+    public function importPdf(Request $request, string $slug, PdfImportService $importer): JsonResponse
+    {
+        $system = $this->resolveSystem($request, $slug);
+        $this->authorize('contribute', $system);
+
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:pdf', 'max:' . config('knowledge.max_pdf_kb')],
+            'proposed_parent_id' => ['nullable', 'integer'],
+            'proposed_after_id' => ['nullable', 'integer'],
+            'change_summary' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        if (!Qpdf::available()) {
+            throw ValidationException::withMessages(['file' => 'Splitting a PDF needs the qpdf tool on the server. Upload it as one section instead, or ask your administrator to install qpdf.']);
+        }
+
+        [$parentId, $afterId] = $this->validatedPosition($system, $request->integer('proposed_parent_id') ?: null, $request->integer('proposed_after_id') ?: null);
+
+        $file = $request->file('file');
+        if (!PdfInfo::looksLikePdf($file->getRealPath())) {
+            throw ValidationException::withMessages(['file' => 'This file is not a valid PDF.']);
+        }
+
+        $pageCount = PdfInfo::pageCount($file->getRealPath());
+        if (!$pageCount) {
+            throw ValidationException::withMessages(['file' => 'This PDF could not be read.']);
+        }
+
+        $name = Str::of($file->getClientOriginalName())->beforeLast('.')->limit(250, '')->toString();
+        $sections = $importer->propose($file->getRealPath(), $pageCount, $name);
+        $path = $file->storeAs("manual-imports/{$system->id}", Str::uuid() . '.pdf', config('knowledge.disk'));
+
+        $change = ManualChangeRequest::create([
+            'system_id' => $system->id,
+            'type' => ManualChangeRequest::TYPE_IMPORT,
+            'kind' => ManualSection::KIND_UPLOADED_PDF,
+            'title' => $name,
+            'file_path' => $path,
+            'file_name' => Str::limit($file->getClientOriginalName(), 250, ''),
+            'file_size' => $file->getSize(),
+            'page_count' => $pageCount,
+            'payload' => ['sections' => $sections, 'from_bookmarks' => count($sections) > 1],
+            'proposed_parent_id' => $parentId,
+            'proposed_after_id' => $afterId,
+            'change_summary' => $request->input('change_summary'),
+            'status' => ManualChangeRequest::STATUS_DRAFT,
+            'author_id' => $request->user()->id,
+        ]);
+
+        return (new ManualChangeResource($change->load('system:id,name,slug')))->response()->setStatusCode(201);
+    }
+
+    /** The author's own split of a PDF import: titles, levels and page ranges. */
+    public function updateImportSections(Request $request, ManualChangeRequest $change, PdfImportService $importer): ManualChangeResource
+    {
+        $this->authorizeAuthor($request, $change);
+        $this->ensureEditable($change);
+        abort_unless($change->isPdfImport(), 422, 'Only a PDF import can be split by pages.');
+
+        $request->validate([
+            'sections' => ['required', 'array', 'max:' . PdfImportService::MAX_SECTIONS],
+            'sections.*.title' => ['nullable', 'string', 'max:250'],
+            'sections.*.depth' => ['required', 'integer', 'min:0', 'max:' . PdfImportService::MAX_DEPTH],
+            'sections.*.page_from' => ['nullable', 'integer'],
+            'sections.*.page_to' => ['nullable', 'integer'],
+        ]);
+
+        $change->update([
+            'payload' => array_merge($change->payload ?? [], [
+                'sections' => $importer->validated($request->input('sections'), (int) $change->page_count),
+            ]),
+        ]);
+
+        return new ManualChangeResource($change->fresh()->load('system:id,name,slug'));
     }
 
     public function submit(Request $request, ManualChangeRequest $change): ManualChangeResource
