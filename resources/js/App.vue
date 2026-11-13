@@ -15,10 +15,7 @@
                 <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold shadow-sm mr-3" :style="{ backgroundColor: orgPrimaryColor }">
                     {{ orgInitial }}
                 </div>
-                <div class="flex flex-col">
-                    <span class="text-sm font-bold text-gray-900 tracking-tight leading-tight">{{ orgName }}</span>
-                    <span class="text-xs text-gray-400 leading-tight">WorkTrack Pro</span>
-                </div>
+                <span class="text-sm font-bold text-gray-900 tracking-tight leading-tight">{{ orgName }}</span>
             </div>
             
             <!-- Navigation Links -->
