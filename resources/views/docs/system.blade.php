@@ -95,7 +95,7 @@
                         <span class="h-1 w-full bg-linear-to-r from-(--docs-accent) to-transparent" aria-hidden="true"></span>
                         <span class="flex flex-1 flex-col px-5 pt-4 pb-4">
                             <span class="flex items-start gap-2">
-                                <span class="flex-1 text-[17px] font-semibold leading-snug {{ $card['locked'] ? 'text-gray-500' : 'text-gray-900 group-hover:text-(--docs-accent)' }}">{{ $chapter->title }}</span>
+                                <span class="flex-1 text-[17px] font-semibold leading-snug {{ $card['locked'] ? 'text-gray-500' : 'text-gray-900 group-hover:text-(--docs-accent)' }}">@if ($chapter->number)<span class="text-(--docs-accent) tabular-nums">{{ $chapter->number }}.</span> @endif{{ $chapter->title }}</span>
                                 @if ($card['locked'])
                                     @include('docs.partials.lock', ['class' => 'w-4 h-4 mt-1 text-gray-400'])
                                 @endif
