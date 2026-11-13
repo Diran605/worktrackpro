@@ -1,5 +1,13 @@
 <template>
     <div>
+        <!-- Until the first data arrives: one spinner, not half-filled cards -->
+        <div v-if="!ready" class="py-32 flex justify-center">
+            <svg class="animate-spin h-8 w-8 text-teal-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+        </div>
+        <template v-else>
         <CarryOverModal
             v-if="sessionStore.carryOvers?.length"
             :plans="sessionStore.carryOvers"
@@ -274,6 +282,7 @@
 
         </div>
         </template>
+        </template>
     </div>
 </template>
 
@@ -290,6 +299,8 @@ const sessionStore = useSessionStore();
 const stats = ref({});
 const weekLabel = ref('');
 const loading = ref(true);
+// False until the first load (cards, attendance, week stats) is done.
+const ready = ref(false);
 
 const currentOffset = ref(0); // 0 = this week, -1 = last week
 
@@ -361,15 +372,17 @@ const getPercentage = (value, total) => {
     return Math.round((value / total) * 100);
 };
 
-onMounted(() => {
-    fetchOverview();
-    if (hasAttendance.value) sessionStore.fetchCurrentSession();
+onMounted(async () => {
+    const first = [fetchOverview()];
+    if (hasAttendance.value) first.push(sessionStore.fetchCurrentSession());
     if (hasWork.value) {
         sessionStore.fetchPendingCarryOvers();
-        fetchDashboardStats();
+        first.push(fetchDashboardStats());
     } else {
         loading.value = false;
     }
+    await Promise.allSettled(first);
+    ready.value = true;
 });
 
 const handleClockIn = async () => {

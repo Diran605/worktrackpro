@@ -1,5 +1,12 @@
 <template>
-    <div class="h-screen w-full flex bg-gray-50 selection:bg-teal-500 selection:text-white overflow-hidden" :style="orgColorVars">
+    <!-- Signed in, but who it is isn't known yet: no menu or page until it is -->
+    <div v-if="booting" class="h-screen w-full flex items-center justify-center bg-gray-50">
+        <svg class="animate-spin h-8 w-8 text-teal-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+        </svg>
+    </div>
+    <div v-else class="h-screen w-full flex bg-gray-50 selection:bg-teal-500 selection:text-white overflow-hidden" :style="orgColorVars">
         
         <!-- Sidebar Navigation -->
         <aside v-if="authStore.isAuthenticated" class="w-64 shrink-0 bg-white border-r border-gray-200 flex-col h-full shadow-sm relative z-20 transition-all duration-300 hidden md:flex">
@@ -212,6 +219,8 @@ const orgInitial = computed(() => orgName.value.charAt(0).toUpperCase());
 // The brand colours come from CSS variables the page sets before the app loads
 // (app.blade.php) and the auth store then refreshes, so nothing flashes teal on reload.
 const orgPrimaryColor = 'var(--color-teal-600)';
+
+const booting = computed(() => !!authStore.token && !authStore.user);
 
 const orgColorVars = {
     '--org-primary': 'var(--color-teal-600)',
