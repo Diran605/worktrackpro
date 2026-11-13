@@ -123,7 +123,7 @@
                     </router-link>
                 </div>
 
-                <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold border" :style="{ backgroundColor: orgPrimaryColor, borderColor: orgPrimaryColor + '40' }">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold border" :style="{ backgroundColor: orgPrimaryColor, borderColor: 'color-mix(in oklab, var(--color-teal-600) 25%, transparent)' }">
                     {{ authStore.user?.name?.charAt(0) || 'U' }}
                 </div>
                 <div class="ml-3 flex-1 overflow-hidden">
@@ -209,12 +209,14 @@ const isAdmin = computed(() => {
 
 const orgName = computed(() => authStore.user?.organisation?.name || 'WorkTrack Pro');
 const orgInitial = computed(() => orgName.value.charAt(0).toUpperCase());
-const orgPrimaryColor = computed(() => authStore.user?.organisation?.primary_color || '#0d9488');
+// The brand colours come from CSS variables the page sets before the app loads
+// (app.blade.php) and the auth store then refreshes, so nothing flashes teal on reload.
+const orgPrimaryColor = 'var(--color-teal-600)';
 
-const orgColorVars = computed(() => ({
-    '--org-primary': orgPrimaryColor.value,
-    '--org-secondary': authStore.user?.organisation?.secondary_color || '#6366f1',
-}));
+const orgColorVars = {
+    '--org-primary': 'var(--color-teal-600)',
+    '--org-secondary': 'var(--color-indigo-600)',
+};
 
 const notifications = ref([]);
 const notificationsOpen = ref(false);

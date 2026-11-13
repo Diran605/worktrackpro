@@ -96,6 +96,8 @@ export const useAuthStore = defineStore('auth', {
                 document.head.appendChild(style);
             }
             style.textContent = css;
+            // Remembered so the next page load paints these colours straight away (app.blade.php).
+            try { localStorage.setItem('org_theme_css', css); } catch (e) { /* storage unavailable */ }
         },
 
         removeThemeOverrides() {
@@ -103,6 +105,7 @@ export const useAuthStore = defineStore('auth', {
             if (style) {
                 style.remove();
             }
+            try { localStorage.removeItem('org_theme_css'); } catch (e) { /* storage unavailable */ }
         }
     }
 });
