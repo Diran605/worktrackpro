@@ -125,15 +125,20 @@
                 <p class="text-xs text-gray-500">The owner can leave sections out when approving, and rename or reorder them afterwards.</p>
             </div>
 
-            <!-- Word import preview -->
+            <!-- Word import preview: untick what you don't want, rename -->
             <div v-else-if="importChange" class="border border-gray-200 rounded-xl p-4 bg-gray-50">
-                <div class="text-sm font-semibold text-gray-900 mb-2">{{ importChange.import_sections.length }} sections found</div>
-                <ul class="text-sm text-gray-700 space-y-0.5 max-h-72 overflow-y-auto">
-                    <li v-for="(s, i) in importChange.import_sections" :key="i" :style="{ paddingLeft: (s.depth * 1.25) + 'rem' }">
-                        {{ s.depth === 0 ? '■' : '–' }} {{ s.title }}
+                <div class="text-sm font-semibold text-gray-900 mb-1">{{ wordRows.filter((r) => r.keep && !r.parentLeftOut).length }} of {{ wordRows.length }} sections will be added</div>
+                <p class="text-xs text-gray-600 mb-3">Untick anything you don't want, such as a cover page. Leaving out a section leaves out its sub-sections too. You can also correct titles here.</p>
+                <ul class="space-y-1.5 max-h-[28rem] overflow-y-auto pr-1">
+                    <li v-for="(r, i) in wordRows" :key="i" class="flex items-center gap-2" :style="{ paddingLeft: (r.depth * 1.5) + 'rem' }"
+                        :class="!r.keep || r.parentLeftOut ? 'opacity-50' : ''">
+                        <input type="checkbox" v-model="r.keep" :disabled="r.parentLeftOut" class="rounded text-teal-600 focus:ring-teal-500">
+                        <input v-model="r.title" type="text" maxlength="250"
+                               class="flex-1 px-2 py-1 border border-transparent hover:border-gray-300 focus:border-teal-500 rounded-lg text-sm bg-transparent"
+                               :class="r.depth === 0 ? 'font-semibold text-gray-900' : 'text-gray-700'">
                     </li>
                 </ul>
-                <p class="text-xs text-gray-500 mt-3">The owner can leave sections out when approving, and rename or reorder them afterwards.</p>
+                <p class="text-xs text-gray-500 mt-3">The owner can still leave sections out when approving, and rename or reorder them afterwards.</p>
             </div>
 
             <div class="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
@@ -202,6 +207,18 @@ const pdfOptions = [
 const isPdfImport = computed(() => importChange.value?.kind === 'uploaded_pdf');
 const rows = ref([]);
 let rowKey = 0;
+// Word import: which sections to keep, and their titles.
+const wordRows = ref([]);
+watch(wordRows, (list) => {
+    // A section is left out when any section above it at a higher level is.
+    let leftOutDepth = null;
+    for (const r of list) {
+        if (leftOutDepth !== null && r.depth > leftOutDepth) { r.parentLeftOut = true; continue; }
+        leftOutDepth = null;
+        r.parentLeftOut = false;
+        if (!r.keep) leftOutDepth = r.depth;
+    }
+}, { deep: true });
 const setRows = (sections) => {
     rows.value = (sections || []).map((s) => ({ ...s, key: ++rowKey }));
 };
@@ -248,6 +265,7 @@ const upload = async () => {
             if (summary.value) data.append('change_summary', summary.value);
             const res = await api.post(`/systems/${slug.value}/manual/import-docx`, data, multipart);
             importChange.value = res.data.data;
+            wordRows.value = res.data.data.import_sections.map((sec) => ({ title: sec.title, depth: sec.depth, keep: true, parentLeftOut: false }));
             return;
         }
 
@@ -299,6 +317,10 @@ const submitImport = async () => {
                 sections: rows.value.map(({ title, depth, page_from, page_to }) => ({
                     title, depth, page_from: page_from || null, page_to: page_to || null,
                 })),
+            });
+        } else {
+            await api.put(`/manual-changes/${importChange.value.id}/import-sections`, {
+                sections: wordRows.value.map((r) => ({ title: r.title.trim() || 'Untitled section', keep: r.keep && !r.parentLeftOut })),
             });
         }
         const res = await api.post(`/manual-changes/${importChange.value.id}/submit`);

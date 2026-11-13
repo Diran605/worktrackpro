@@ -336,12 +336,20 @@ class ManualChangeController extends Controller
         return (new ManualChangeResource($change->load('system:id,name,slug')))->response()->setStatusCode(201);
     }
 
-    /** The author's own split of a PDF import: titles, levels and page ranges. */
+    /**
+     * The author's changes to an import before submitting it.
+     * PDF: titles, levels and page ranges. Word: titles, and which sections to keep
+     * (leaving one out leaves out its sub-sections too).
+     */
     public function updateImportSections(Request $request, ManualChangeRequest $change, PdfImportService $importer): ManualChangeResource
     {
         $this->authorizeAuthor($request, $change);
         $this->ensureEditable($change);
-        abort_unless($change->isPdfImport(), 422, 'Only a PDF import can be split by pages.');
+        abort_unless($change->type === ManualChangeRequest::TYPE_IMPORT, 422, 'This change is not an import.');
+
+        if (!$change->isPdfImport()) {
+            return $this->updateWordImportSections($request, $change);
+        }
 
         $request->validate([
             'sections' => ['required', 'array', 'max:' . PdfImportService::MAX_SECTIONS],
@@ -356,6 +364,46 @@ class ManualChangeController extends Controller
                 'sections' => $importer->validated($request->input('sections'), (int) $change->page_count),
             ]),
         ]);
+
+        return new ManualChangeResource($change->fresh()->load('system:id,name,slug'));
+    }
+
+    private function updateWordImportSections(Request $request, ManualChangeRequest $change): ManualChangeResource
+    {
+        $current = $change->importSections();
+
+        $request->validate([
+            'sections' => ['required', 'array', 'size:' . count($current)],
+            'sections.*.title' => ['required', 'string', 'max:250'],
+            'sections.*.keep' => ['required', 'boolean'],
+        ]);
+
+        $kept = [];
+        $skippedDepth = null;
+        foreach (array_values($request->input('sections')) as $i => $edit) {
+            $depth = (int) $current[$i]['depth'];
+            if ($skippedDepth !== null && $depth > $skippedDepth) {
+                continue;
+            }
+            $skippedDepth = null;
+            if (!$edit['keep']) {
+                $skippedDepth = $depth;
+                continue;
+            }
+            $kept[] = array_merge($current[$i], ['title' => trim($edit['title'])]);
+        }
+
+        if ($kept === []) {
+            throw ValidationException::withMessages(['sections' => 'Keep at least one section.']);
+        }
+
+        // If a chapter was left out, the first kept section may be a sub-section: lift it up.
+        $previous = -1;
+        foreach ($kept as $i => $item) {
+            $kept[$i]['depth'] = $previous = min((int) $item['depth'], $previous + 1);
+        }
+
+        $change->update(['payload' => array_merge($change->payload ?? [], ['sections' => $kept])]);
 
         return new ManualChangeResource($change->fresh()->load('system:id,name,slug'));
     }
