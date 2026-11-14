@@ -117,6 +117,7 @@ Route::prefix('v1')->group(function () {
             Route::post('track-study', [ManualController::class, 'trackStudy'])->middleware('module:work_tracking');
             Route::post('changes', [ManualChangeController::class, 'store'])->name('api.manual-changes.store');
             Route::post('import-docx', [ManualChangeController::class, 'importDocx']);
+            Route::post('import-pdf', [ManualChangeController::class, 'importPdf']);
             Route::post('export', [\App\Http\Controllers\Api\V1\ManualExportController::class, 'store']);
         });
 
@@ -128,6 +129,7 @@ Route::prefix('v1')->group(function () {
             Route::patch('{change}', [ManualChangeController::class, 'update'])->name('api.manual-changes.update');
             Route::delete('{change}', [ManualChangeController::class, 'destroy']);
             Route::post('{change}/pdf', [ManualChangeController::class, 'uploadPdf'])->name('api.manual-changes.pdf');
+            Route::put('{change}/import-sections', [ManualChangeController::class, 'updateImportSections']);
             Route::post('{change}/submit', [ManualChangeController::class, 'submit']);
             Route::post('{change}/track-time', [ManualChangeController::class, 'trackTime'])->middleware('module:work_tracking');
         });

@@ -16,6 +16,7 @@ use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -99,42 +100,63 @@ class ManualSectionResource extends Resource
             ->defaultSort(fn (Builder $query) => $query->orderBy('system_id')->orderBy('sort_key'))
             ->paginated([25, 50, 100, 'all'])
             ->defaultPaginationPageOption(50)
+            // One block per product, in manual order, each block collapsible.
+            ->groups([
+                Group::make('system_id')
+                    ->label('Product')
+                    ->titlePrefixedWithLabel(false)
+                    ->getTitleFromRecordUsing(fn (ManualSection $r) => $r->system?->name ?? '—')
+                    ->getDescriptionFromRecordUsing(fn (ManualSection $r) => $r->system ? 'Manual v' . $r->system->manual_version : null)
+                    ->orderQueryUsing(fn (Builder $query, string $direction) => $query->orderBy(
+                        System::query()->select('name')->whereColumn('systems.id', 'manual_sections.system_id'),
+                        $direction,
+                    ))
+                    ->collapsible(),
+            ])
+            ->defaultGroup('system_id')
+            ->groupingSettingsHidden()
             ->columns([
-                TextColumn::make('system.name')->label('Product'),
-                TextColumn::make('number')->label('#')->placeholder('—'),
+                // "1.1  Refunds": chapters in bold, sub-sections indented under them.
                 TextColumn::make('title')
+                    ->label('Section')
                     ->searchable()
-                    ->formatStateUsing(fn (string $state, ManualSection $r) => str_repeat('↳ ', (int) $r->depth) . $state),
-                TextColumn::make('kind')
-                    ->badge()
-                    ->formatStateUsing(fn ($state) => $state === ManualSection::KIND_UPLOADED_PDF ? 'PDF' : 'Written')
-                    ->color(fn ($state) => $state === ManualSection::KIND_UPLOADED_PDF ? 'info' : 'gray'),
+                    ->html()
+                    ->formatStateUsing(fn (string $state, ManualSection $r) => sprintf(
+                        '<span style="display:inline-block;padding-left:%srem;font-weight:%d"><span style="display:inline-block;min-width:2.75rem;opacity:.55;font-variant-numeric:tabular-nums">%s</span>%s</span>',
+                        (int) $r->depth * 1.5,
+                        (int) $r->depth === 0 ? 600 : 400,
+                        e($r->number ?? ''),
+                        e($state),
+                    ))
+                    ->description(fn (ManualSection $r) => collect([
+                        $r->kind === ManualSection::KIND_UPLOADED_PDF ? 'PDF' : null,
+                        $r->status === ManualSection::STATUS_ARCHIVED ? 'Archived' : null,
+                    ])->filter()->join(' · ') ?: null),
                 TextColumn::make('version')
                     ->label('Version')
+                    ->color('gray')
                     ->state(fn (ManualSection $r) => 'v' . $r->currentVersion()),
                 TextColumn::make('last_verified_at')
-                    ->label('Last verified')
+                    ->label('Last checked')
                     ->since()
                     ->placeholder('Never')
-                    ->color(fn (ManualSection $r) => !$r->last_verified_at || $r->last_verified_at->lt(now()->subDays($staleDays)) ? 'danger' : null),
-                TextColumn::make('status')
-                    ->badge()
-                    ->color(fn ($state) => $state === ManualSection::STATUS_PUBLISHED ? 'success' : 'gray'),
-                TextColumn::make('visibility')
-                    ->label('Library')
+                    ->tooltip('When someone last confirmed this section is still accurate (Mark as still accurate).')
+                    ->color(fn (ManualSection $r) => !$r->last_verified_at || $r->last_verified_at->lt(now()->subDays($staleDays)) ? 'danger' : 'gray'),
+                // Who can read it in the documentation library: everyone, restricted, or certain audiences.
+                TextColumn::make('library_access')
+                    ->label('Library access')
                     ->visible(fn () => \App\Support\Modules::allows(\App\Support\Modules::DOCS_LIBRARY))
                     ->badge()
-                    ->icon(fn ($state) => $state === ManualSection::VISIBILITY_RESTRICTED ? 'heroicon-m-lock-closed' : null)
-                    ->formatStateUsing(fn ($state) => $state === ManualSection::VISIBILITY_RESTRICTED ? 'Restricted' : 'As the manual')
-                    ->color(fn ($state) => $state === ManualSection::VISIBILITY_RESTRICTED ? 'warning' : 'gray')
-                    ->tooltip('Restricted chapters (and everything under them) can only be read by staff and people whose access code includes restricted chapters.'),
-                TextColumn::make('audiences.name')
-                    ->label('For')
-                    ->visible(fn () => \App\Support\Modules::allows(\App\Support\Modules::DOCS_LIBRARY))
-                    ->badge()
-                    ->color('info')
-                    ->placeholder('Everyone')
-                    ->tooltip('Chapters meant for audiences (and everything under them) can only be read in the library by staff and by access codes that open one of those audiences.'),
+                    ->state(fn (ManualSection $r) => $r->visibility === ManualSection::VISIBILITY_RESTRICTED
+                        ? ['Restricted']
+                        : ($r->audiences->isNotEmpty() ? $r->audiences->pluck('name')->all() : ['Everyone']))
+                    ->icon(fn ($state) => $state === 'Restricted' ? 'heroicon-m-lock-closed' : null)
+                    ->color(fn ($state) => match ($state) {
+                        'Restricted' => 'warning',
+                        'Everyone' => 'gray',
+                        default => 'info',
+                    })
+                    ->tooltip('Restricted chapters, and chapters for certain audiences (with everything under them), can only be read in the library by staff and by access codes that open them.'),
             ])
             ->filters([
                 SelectFilter::make('system_id')

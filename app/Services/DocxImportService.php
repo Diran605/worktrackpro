@@ -69,7 +69,7 @@ class DocxImportService
                     $sections[] = $current;
                 }
                 $current = [
-                    'title' => Str::limit(trim(preg_replace('/\s+/', ' ', $node->textContent)) ?: 'Untitled section', 250, ''),
+                    'title' => Str::limit(self::cleanTitle($node->textContent) ?: 'Untitled section', 250, ''),
                     'html' => '',
                     'depth' => $splitLevels[$level],
                 ];
@@ -90,6 +90,16 @@ class DocxImportService
             fn ($s) => $s['title'] !== 'Introduction' || trim(strip_tags($s['html'], '<img>')) !== ''
         ));
 
+        // Word's own table of contents: the manual builds its own, so it is left out.
+        $sections = array_values(array_filter($sections, fn ($s) => !self::isTableOfContents($s['title'])));
+
+        // Text before the first heading is usually the cover page; don't call it "Introduction"
+        // when the document has its own Introduction chapter.
+        if (isset($sections[0]) && $sections[0]['title'] === 'Introduction' && $sections[0]['depth'] === 0
+            && collect(array_slice($sections, 1))->contains(fn ($s) => strcasecmp($s['title'], 'Introduction') === 0)) {
+            $sections[0]['title'] = 'Cover page';
+        }
+
         if ($sections === []) {
             throw ValidationException::withMessages(['file' => 'No content was found in this document.']);
         }
@@ -105,6 +115,23 @@ class DocxImportService
                 'depth' => $s['depth'],
             ], $sections),
         ];
+    }
+
+    /**
+     * A heading's text without the numbers typed into it ("2.1 Refunds" -> "Refunds"):
+     * the manual numbers its sections itself.
+     */
+    public static function cleanTitle(string $text): string
+    {
+        $title = trim(preg_replace('/\s+/u', ' ', $text));
+        $stripped = preg_replace('/^(?:(?:chapter|section|part|module|unit)\s+)?\d{1,2}(?:\.\d{1,2})*[.):]?\s+(?:[-\x{2013}\x{2014}:]\s*)?/iu', '', $title);
+
+        return $stripped !== '' && $stripped !== null ? $stripped : $title;
+    }
+
+    public static function isTableOfContents(string $title): bool
+    {
+        return (bool) preg_match('/^(table of contents|contents|toc)$/i', trim($title));
     }
 
     /**

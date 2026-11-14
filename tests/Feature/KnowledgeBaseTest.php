@@ -338,6 +338,55 @@ class KnowledgeBaseTest extends TestCase
         @unlink($path);
     }
 
+    public function test_word_import_drops_its_contents_page_and_typed_numbers(): void
+    {
+        $doc = new PhpWord();
+        $doc->addTitleStyle(1, ['size' => 16, 'bold' => true]);
+        $doc->addTitleStyle(2, ['size' => 13, 'bold' => true]);
+        $s = $doc->addSection();
+        $s->addText('USER MANUAL - Prepared for Nkwen District Hospital');
+        $s->addTitle('Table of Contents', 1);
+        $s->addTitle('1. Introduction', 1);
+        $s->addText('Welcome.');
+        $s->addTitle('2. Getting Started — The Main Screen', 1);
+        $s->addText('The main screen.');
+        $s->addTitle('2.1 Key Areas', 2);
+        $s->addText('Areas.');
+        $s->addTitle('Step 1 — Enter the customer', 2);
+        $s->addText('Type a name.');
+
+        $path = tempnam(sys_get_temp_dir(), 'docx') . '.docx';
+        \PhpOffice\PhpWord\IOFactory::createWriter($doc, 'Word2007')->save($path);
+
+        Sanctum::actingAs($this->worker);
+        $response = $this->postJson("{$this->base()}/import-docx", [
+            'file' => new UploadedFile($path, 'POS Manual.docx', null, null, true),
+        ])->assertCreated();
+
+        $this->assertSame(
+            [['Cover page', 0], ['Introduction', 0], ['Getting Started — The Main Screen', 0], ['Key Areas', 1], ['Step 1 — Enter the customer', 1]],
+            collect($response->json('data.import_sections'))->map(fn ($s) => [$s['title'], $s['depth']])->all()
+        );
+
+        // The author leaves out the cover page and renames a section before submitting.
+        $id = $response->json('data.id');
+        $this->putJson("/api/v1/manual-changes/{$id}/import-sections", ['sections' => [
+            ['title' => 'Cover page', 'keep' => false],
+            ['title' => 'Introduction', 'keep' => true],
+            ['title' => 'Getting started', 'keep' => true],
+            ['title' => 'Key Areas', 'keep' => true],
+            ['title' => 'Step 1 — Enter the customer', 'keep' => true],
+        ]])->assertOk();
+
+        $this->assertSame(
+            ['Introduction', 'Getting started', 'Key Areas', 'Step 1 — Enter the customer'],
+            array_column(ManualChangeRequest::find($id)->importSections(), 'title')
+        );
+        $this->assertStringContainsString('The main screen.', ManualChangeRequest::find($id)->importSections()[1]['body']);
+
+        @unlink($path);
+    }
+
     // ---------------------------------------------------------------------------------------------
     // Reading progress and search
     // ---------------------------------------------------------------------------------------------

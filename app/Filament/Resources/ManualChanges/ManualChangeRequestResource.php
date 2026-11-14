@@ -125,7 +125,7 @@ class ManualChangeRequestResource extends Resource
             ->columns([
                 TextColumn::make('title')
                     ->searchable()
-                    ->description(fn (ManualChangeRequest $r) => ManualChangeRequest::TYPE_LABELS[$r->type] ?? $r->type),
+                    ->description(fn (ManualChangeRequest $r) => $r->typeLabel()),
                 TextColumn::make('system.name')->label('Product')->sortable(),
                 TextColumn::make('author.name')->label('Author'),
                 TextColumn::make('status')
@@ -165,7 +165,7 @@ class ManualChangeRequestResource extends Resource
                     ->columns(3)
                     ->schema([
                         TextEntry::make('system.name')->label('Product'),
-                        TextEntry::make('type')->formatStateUsing(fn ($state) => ManualChangeRequest::TYPE_LABELS[$state] ?? $state),
+                        TextEntry::make('type')->state(fn (ManualChangeRequest $r) => $r->typeLabel()),
                         TextEntry::make('status')
                             ->badge()
                             ->formatStateUsing(fn ($state) => ManualChangeRequest::STATUS_LABELS[$state] ?? $state),
@@ -219,7 +219,7 @@ class ManualChangeRequestResource extends Resource
                             )),
                     ]),
 
-                Section::make('Sections in this Word import')
+                Section::make(fn (ManualChangeRequest $r) => 'Sections in this ' . ($r->isPdfImport() ? 'PDF' : 'Word') . ' import')
                     ->description('Untick sections you don\'t want when approving. Leaving out a section also leaves out its sub-sections. You can rename or reorder sections after approval under Manual Structure.')
                     ->visible(fn (ManualChangeRequest $r) => $r->type === ManualChangeRequest::TYPE_IMPORT)
                     ->schema([
@@ -272,7 +272,13 @@ class ManualChangeRequestResource extends Resource
     private static function importOutline(ManualChangeRequest $r): HtmlString
     {
         $items = collect($r->importSections())->map(fn ($s, $i) => '<li style="margin-left:' . ((int) $s['depth'] * 1.5) . 'rem">'
-            . e(($i + 1) . '. ' . $s['title']) . '</li>');
+            . e(($i + 1) . '. ' . $s['title'])
+            . ($r->isPdfImport()
+                ? ' <span style="opacity:.6">(' . (!empty($s['page_from'])
+                    ? ($s['page_from'] === $s['page_to'] ? 'page ' . $s['page_from'] : 'pages ' . $s['page_from'] . '–' . $s['page_to'])
+                    : 'heading only') . ')</span>'
+                : '')
+            . '</li>');
 
         return new HtmlString('<ul>' . $items->join('') . '</ul>');
     }

@@ -114,6 +114,19 @@ class KnowledgeAdminPagesTest extends TestCase
         $this->assertSame('1', $second->fresh()->number);
     }
 
+    public function test_sections_are_grouped_by_product(): void
+    {
+        app(ManualService::class)->approve($this->submittedChange('First'), $this->admin);
+        $this->actingAs($this->admin);
+
+        Livewire::test(ListManualSections::class)
+            ->loadTable()
+            ->assertSee($this->system->name)
+            ->assertSee('Manual v')
+            ->assertSee('First')
+            ->assertSee('Library access');
+    }
+
     public function test_drafts_are_hidden_from_reviewers(): void
     {
         ManualChangeRequest::create([

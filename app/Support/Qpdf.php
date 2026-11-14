@@ -64,6 +64,32 @@ final class Qpdf
     }
 
     /**
+     * The PDF's bookmarks (its built-in table of contents), as a tree.
+     *
+     * @return array<int, array{title: string, page: ?int, kids: array}>
+     */
+    public static function outline(string $path): array
+    {
+        $json = json_decode(self::run(['--json=2', '--json-key=outlines', $path]), true);
+
+        $map = function (array $items) use (&$map): array {
+            return array_map(fn (array $item) => [
+                'title' => trim(preg_replace('/\s+/u', ' ', (string) ($item['title'] ?? ''))),
+                'page' => isset($item['destpageposfrom1']) ? (int) $item['destpageposfrom1'] : null,
+                'kids' => $map($item['kids'] ?? []),
+            ], $items);
+        };
+
+        return $map($json['outlines'] ?? []);
+    }
+
+    /** Copy pages $from–$to of $source into a new file. */
+    public static function extractPages(string $source, int $from, int $to, string $destination): void
+    {
+        self::assemble([[$source, "{$from}-{$to}"]], $destination);
+    }
+
+    /**
      * Lay each page of $overlay on top of the matching page of $base (used for page-number footers).
      */
     public static function overlay(string $base, string $overlay, string $destination): void
