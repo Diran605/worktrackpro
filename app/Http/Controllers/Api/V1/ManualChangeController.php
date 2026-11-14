@@ -313,7 +313,7 @@ class ManualChangeController extends Controller
         }
 
         $name = Str::of($file->getClientOriginalName())->beforeLast('.')->limit(250, '')->toString();
-        $sections = $importer->propose($file->getRealPath(), $pageCount, $name);
+        $proposal = $importer->propose($file->getRealPath(), $pageCount, $name);
         $path = $file->storeAs("manual-imports/{$system->id}", Str::uuid() . '.pdf', config('knowledge.disk'));
 
         $change = ManualChangeRequest::create([
@@ -325,7 +325,7 @@ class ManualChangeController extends Controller
             'file_name' => Str::limit($file->getClientOriginalName(), 250, ''),
             'file_size' => $file->getSize(),
             'page_count' => $pageCount,
-            'payload' => ['sections' => $sections, 'from_bookmarks' => count($sections) > 1],
+            'payload' => ['sections' => $proposal['sections'], 'split_source' => $proposal['source']],
             'proposed_parent_id' => $parentId,
             'proposed_after_id' => $afterId,
             'change_summary' => $request->input('change_summary'),

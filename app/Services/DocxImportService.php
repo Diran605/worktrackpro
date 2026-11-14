@@ -124,7 +124,7 @@ class DocxImportService
     public static function cleanTitle(string $text): string
     {
         $title = trim(preg_replace('/\s+/u', ' ', $text));
-        $stripped = preg_replace('/^(?:(?:chapter|section|part)\s+)?\d{1,2}(?:\.\d{1,2})*[.):]?\s+(?:[-\x{2013}\x{2014}:]\s*)?/iu', '', $title);
+        $stripped = preg_replace('/^(?:(?:chapter|section|part|module|unit)\s+)?\d{1,2}(?:\.\d{1,2})*[.):]?\s+(?:[-\x{2013}\x{2014}:]\s*)?/iu', '', $title);
 
         return $stripped !== '' && $stripped !== null ? $stripped : $title;
     }

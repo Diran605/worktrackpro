@@ -50,10 +50,13 @@ class PdfImportTest extends TestCase
     }
 
     /**
-     * A small PDF with $pages pages and the given bookmarks: [[title, page, [kids…]], …].
+     * A small PDF with the given bookmarks: [[title, page, [kids…]], …].
+     * $pages is a page count, or the lines of text on each page.
      */
-    private function pdf(int $pages, array $bookmarks = [], string $name = 'Edutrust guide.pdf'): UploadedFile
+    private function pdf(int|array $pages, array $bookmarks = [], string $name = 'Edutrust guide.pdf'): UploadedFile
     {
+        $texts = is_array($pages) ? $pages : array_map(fn ($i) => ["Page {$i}"], range(1, $pages));
+        $pages = count($texts);
         $objects = [];
         $add = function (string $body) use (&$objects): int {
             $objects[] = $body;
@@ -66,7 +69,8 @@ class PdfImportTest extends TestCase
         $font = $add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
         $pageIds = [];
         for ($i = 1; $i <= $pages; $i++) {
-            $text = "BT /F1 24 Tf 72 700 Td (Page {$i}) Tj ET";
+            // One line of text per row, each 20 points below the one before.
+            $text = 'BT /F1 12 Tf 72 740 Td ' . implode(' 0 -20 Td ', array_map(fn ($line) => '(' . addcslashes($line, '()\\') . ') Tj', $texts[$i - 1])) . ' ET';
             $content = $add('<< /Length ' . strlen($text) . " >>\nstream\n{$text}\nendstream");
             $pageIds[$i] = $add("<< /Type /Page /Parent {$pagesId} 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 {$font} 0 R >> >> /Contents {$content} 0 R >>");
         }
@@ -136,13 +140,13 @@ class PdfImportTest extends TestCase
         ]))->assertCreated();
 
         $this->assertSame([
-            ['Introduction', 0, 1, 1],          // the page before the first bookmark
+            ['Cover page', 0, 1, 1],            // the page before the first bookmark
             ['Getting started', 0, 2, 2],
             ['Logging in', 1, 3, 4],
             ['The main screen', 1, 5, 6],
-            ['Sales', 0, null, null],          // its first sub-section starts on the same page: heading only
-            ['Refunds', 1, 7, 10],
+            ['Sales', 0, 7, 10],                // "Refunds" starts on the same page, so it stays part of Sales
         ], $this->sections($response));
+        $this->assertSame('bookmarks', $response->json('data.split_source'));
         $this->assertSame('PDF import', $response->json('data.type_label'));
     }
 
@@ -153,6 +157,32 @@ class PdfImportTest extends TestCase
         $response = $this->import($this->pdf(4, [], 'Vendor guide.pdf'))->assertCreated();
 
         $this->assertSame([['Vendor guide', 0, 1, 4]], $this->sections($response));
+        $this->assertSame('none', $response->json('data.split_source'));
+    }
+
+    public function test_without_bookmarks_chapter_titles_are_found_in_the_text(): void
+    {
+        Sanctum::actingAs($this->worker);
+        $header = 'CETPRIDE POS User Manual';
+        $body = fn (string $topic) => "This part explains how {$topic} works for every member of staff each day.";
+
+        $response = $this->import($this->pdf([
+            [$header, 'CETPRIDE', 'USER MANUAL', 'Version 6.12'],
+            [$header, 'Introduction', $body('the manual')],
+            [$header, 'Module 1: Stock Transfer', $body('moving stock'), '1.1 Accessing Stock Transfers', 'Click Stock Transfers.'],
+            [$header, 'Figure 1.2 - The form', '2. Click Save to finish.'],      // a numbered step, not a chapter
+            [$header, 'Module 2: Expenses', $body('recording expenses')],
+            [$header, 'Quick Reference Summary', $body('the quick reference')],
+        ]))->assertCreated();
+
+        $this->assertSame('text', $response->json('data.split_source'));
+        $this->assertSame([
+            ['Cover page', 0, 1, 1],
+            ['Introduction', 0, 2, 2],
+            ['Stock Transfer', 0, 3, 4],
+            ['Expenses', 0, 5, 5],
+            ['Quick Reference Summary', 0, 6, 6],
+        ], $this->sections($response));
     }
 
     public function test_the_author_can_change_the_split(): void
@@ -195,13 +225,14 @@ class PdfImportTest extends TestCase
 
         app(ManualService::class)->approve(ManualChangeRequest::find($id), $this->owner);
 
+        // "Logging in" starts on the same page as "Getting started", so it stays part of it.
         $this->assertSame(
-            ['Getting started' => '1', 'Logging in' => '1.1', 'The main screen' => '1.2', 'Sales' => '2'],
+            ['Getting started' => '1', 'The main screen' => '1.1', 'Sales' => '2'],
             ManualSection::published()->orderBy('sort_key')->pluck('number', 'title')->all()
         );
 
-        $heading = ManualSection::where('title', 'Getting started')->first();
-        $this->assertSame(ManualSection::KIND_WRITTEN, $heading->kind);
+        $start = ManualSection::where('title', 'Getting started')->first()->currentRevision;
+        $this->assertSame(3, Qpdf::pageCount(Storage::disk('local')->path($start->file_path)));
 
         $screen = ManualSection::where('title', 'The main screen')->first()->currentRevision;
         $this->assertSame(ManualSection::KIND_UPLOADED_PDF, $screen->section->kind);

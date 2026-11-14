@@ -13,6 +13,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
         "phpoffice/phpword": "^1.4",
+        "smalot/pdfparser": "^2.13",
         "spatie/laravel-permission": "^7.3",
         "symfony/html-sanitizer": "^8.0"
     },

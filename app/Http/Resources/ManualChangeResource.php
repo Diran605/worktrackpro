@@ -61,7 +61,7 @@ class ManualChangeResource extends JsonResource
                     'page_to' => $s['page_to'] ?? null,
                 ])->all()
             ),
-            'from_bookmarks' => $this->when($this->type === ManualChangeRequest::TYPE_IMPORT, fn () => (bool) ($this->payload['from_bookmarks'] ?? false)),
+            'split_source' => $this->when($this->type === ManualChangeRequest::TYPE_IMPORT, fn () => $this->payload['split_source'] ?? null),
             'submitted_at' => $this->submitted_at?->toIso8601String(),
             'reviewed_at' => $this->reviewed_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),

@@ -94,8 +94,9 @@
                     <a v-if="importChange.file?.url" :href="importChange.file.url" target="_blank" rel="noopener" class="text-sm text-teal-700 font-semibold hover:underline">Open the PDF to check pages ↗</a>
                 </div>
                 <p class="text-xs text-gray-600">
-                    <template v-if="importChange.from_bookmarks">These come from the PDF's bookmarks. </template>
-                    <template v-else>The PDF has no bookmarks, so it is one section for now. Add a row for each part. </template>
+                    <template v-if="importChange.split_source === 'bookmarks'">These come from the PDF's bookmarks. </template>
+                    <template v-else-if="importChange.split_source === 'text'">The PDF has no bookmarks, so these are the chapter titles found in its text: check them against the PDF. </template>
+                    <template v-else>No chapters were found, so it is one section for now. Add a row for each part. </template>
                     Leave both pages empty for a heading that only groups the sections under it.
                 </p>
 
