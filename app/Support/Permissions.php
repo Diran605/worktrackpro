@@ -40,6 +40,10 @@ final class Permissions
     public const CONTRIBUTE_KB = 'contribute_kb';
     public const APPROVE_KB = 'approve_kb';
 
+    // Competency & readiness
+    public const MANAGE_COMPETENCY = 'manage_competency';
+    public const REVIEW_COMPETENCY = 'review_competency';
+
     // Base (all users)
     public const VIEW_OWN_DATA = 'view_own_data';
     public const MANAGE_OWN_WORK = 'manage_own_work';
@@ -134,6 +138,16 @@ final class Permissions
                 self::VIEW_KB => ['Read manuals', 'Read the knowledge base in the staff portal.'],
                 self::CONTRIBUTE_KB => ['Suggest manual changes', 'Write or upload manual content; a product owner approves it.'],
                 self::APPROVE_KB => ['Approve manual changes', 'Approve changes for every product, not only the ones they own.'],
+            ],
+        ],
+        'competency' => [
+            'label' => 'Competency & readiness',
+            'description' => 'Practical checks that show who can do the job on each product. Product owners, backup owners and reviewers already do this for their own products.',
+            'module' => Modules::COMPETENCY,
+            'lists' => [],
+            'permissions' => [
+                self::MANAGE_COMPETENCY => ['Write competency checks', 'Write checks for every product and choose who must pass them; see everyone\'s readiness.'],
+                self::REVIEW_COMPETENCY => ['Review answers', 'Review answers for every product, not only the ones they own or review.'],
             ],
         ],
     ];

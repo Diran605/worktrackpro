@@ -43,6 +43,7 @@ class DailyPlan extends Model
         'work_type_id',
         'system_id',
         'manual_change_request_id',
+        'competency_check_id',
     ];
 
     protected $casts = [
@@ -113,6 +114,11 @@ class DailyPlan extends Model
     public function manualChangeRequest(): BelongsTo
     {
         return $this->belongsTo(ManualChangeRequest::class);
+    }
+
+    public function competencyCheck(): BelongsTo
+    {
+        return $this->belongsTo(CompetencyCheck::class);
     }
 
     public function projectClient(): BelongsTo

@@ -22,6 +22,11 @@ Schedule::command('worktrack:knowledge:stale-sections')
 Schedule::command('worktrack:knowledge:prune-exports')
     ->weeklyOn(0, '03:00');
 
+// Expired competency passes, and plan tasks for required checks (e.g. after a role change).
+Schedule::command('worktrack:competency:refresh')
+    ->dailyAt('06:00')
+    ->withoutOverlapping();
+
 // Hourly so every organisation gets its plans soon after its own midnight (safe to re-run).
 Schedule::command('worktrack:plans:generate-recurring')
     ->hourly()

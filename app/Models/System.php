@@ -233,6 +233,49 @@ class System extends Model
             ->all();
     }
 
+    public function competencyChecks(): HasMany
+    {
+        return $this->hasMany(CompetencyCheck::class);
+    }
+
+    /**
+     * Who may review answers to this product's competency checks: its owners, backup owners and
+     * reviewers, organisation users holding review_competency, and super admins.
+     */
+    public function canReviewCompetencyBy(User $user): bool
+    {
+        if ($user->hasRole('super_admin')) {
+            return true;
+        }
+
+        if ($user->organisation_id !== $this->organisation_id) {
+            return false;
+        }
+
+        return $user->can(Permissions::REVIEW_COMPETENCY)
+            || $this->members()
+                ->where('user_id', $user->id)
+                ->whereIn('role', SystemMember::COMPETENCY_REVIEWER_ROLES)
+                ->exists();
+    }
+
+    /** Who is told about a new answer: the product's reviewers; if it has none, organisation reviewers. */
+    public function competencyReviewerIds(): array
+    {
+        $ids = $this->membersWithRole(...SystemMember::COMPETENCY_REVIEWER_ROLES)->pluck('id')->all();
+
+        if ($ids !== []) {
+            return $ids;
+        }
+
+        return User::query()
+            ->where('organisation_id', $this->organisation_id)
+            ->where('is_active', true)
+            ->permission(Permissions::REVIEW_COMPETENCY)
+            ->pluck('id')
+            ->all();
+    }
+
     public function nextManualVersion(bool $major): string
     {
         [$maj, $min] = array_map('intval', explode('.', $this->manual_version ?: '0.0') + [0, 0]);

@@ -67,6 +67,13 @@
                     Knowledge
                 </router-link>
 
+                <router-link v-if="canViewKnowledge && hasModule('competency')" :to="{ name: 'MyReadiness' }" :class="isReadinessRoute ? 'bg-teal-50 text-teal-700 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'" class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all">
+                    <svg class="w-5 h-5 mr-3 shrink-0 transition-colors" :class="isReadinessRoute ? 'text-teal-600' : 'text-gray-400 group-hover:text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                    </svg>
+                    My Readiness
+                </router-link>
+
                 <div v-if="isAdmin && hasModule('work_tracking')">
                     <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mt-6 mb-4 px-3">Management</div>
 
@@ -163,6 +170,7 @@
                 <router-link v-if="hasModule('work_tracking')" :to="{ name: 'ActivityLogs' }" class="text-gray-500 hover:text-teal-600 font-medium">Logs</router-link>
                 <router-link v-if="hasModule('work_tracking')" :to="{ name: 'RecurringTasks' }" class="text-gray-500 hover:text-teal-600 font-medium">Recurring</router-link>
                 <router-link v-if="canViewKnowledge && hasModule('knowledge')" :to="{ name: 'Knowledge' }" class="text-gray-500 hover:text-teal-600 font-medium">Knowledge</router-link>
+                <router-link v-if="canViewKnowledge && hasModule('competency')" :to="{ name: 'MyReadiness' }" class="text-gray-500 hover:text-teal-600 font-medium">Readiness</router-link>
                 <router-link v-if="isAdmin && hasModule('work_tracking')" :to="{ name: 'Team' }" class="text-gray-500 hover:text-blue-600 font-medium">Team</router-link>
                 <router-link :to="{ name: 'Settings' }" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
@@ -202,7 +210,8 @@ const inboxStore = useInboxStore();
 // Modules the organisation has; menu items of other modules are not shown.
 const hasModule = (module) => authStore.hasModule(module);
 const canViewKnowledge = computed(() => (authStore.user?.permissions || []).includes('view_kb'));
-const isKnowledgeRoute = computed(() => route.path.startsWith('/knowledge'));
+const isReadinessRoute = computed(() => route.path.startsWith('/knowledge/readiness') || route.path.startsWith('/knowledge/checks'));
+const isKnowledgeRoute = computed(() => route.path.startsWith('/knowledge') && !isReadinessRoute.value);
 const canAccessAdmin = computed(() => !!authStore.user?.can_access_admin);
 
 const isAdmin = computed(() => {

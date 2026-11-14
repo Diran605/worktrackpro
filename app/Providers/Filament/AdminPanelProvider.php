@@ -44,6 +44,7 @@ class AdminPanelProvider extends PanelProvider
                 'Communication',
                 'Letters',
                 'Knowledge',
+                'Competency',
                 'Documentation Library',
                 'Security',
             ])

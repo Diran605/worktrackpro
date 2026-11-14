@@ -20,6 +20,7 @@ final class Modules
     public const LETTERS = 'letters';
     public const KNOWLEDGE = 'knowledge';
     public const DOCS_LIBRARY = 'docs_library';
+    public const COMPETENCY = 'competency';
 
     /** key => [label, description, modules it needs] */
     public const ALL = [
@@ -48,11 +49,16 @@ final class Modules
             'description' => 'The public library of manuals: categories, audiences, access codes, published versions, access requests and feedback.',
             'requires' => [self::KNOWLEDGE],
         ],
+        self::COMPETENCY => [
+            'label' => 'Competency & Readiness',
+            'description' => 'Practical checks per product, reviews of the answers, and who is ready on which product. With Work Tracking, required checks are added to people\'s daily plans.',
+            'requires' => [self::KNOWLEDGE],
+        ],
     ];
 
     /** Ready-made selections for the super admin. */
     public const PRESETS = [
-        'full' => ['label' => 'Full suite', 'modules' => [self::WORK_TRACKING, self::ATTENDANCE, self::LETTERS, self::KNOWLEDGE, self::DOCS_LIBRARY]],
+        'full' => ['label' => 'Full suite', 'modules' => [self::WORK_TRACKING, self::ATTENDANCE, self::LETTERS, self::KNOWLEDGE, self::DOCS_LIBRARY, self::COMPETENCY]],
         'manuals' => ['label' => 'Manuals only', 'modules' => [self::KNOWLEDGE, self::DOCS_LIBRARY]],
         'work' => ['label' => 'Work tracking only', 'modules' => [self::WORK_TRACKING, self::ATTENDANCE]],
     ];

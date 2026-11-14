@@ -46,6 +46,11 @@ class KnowledgeFileController extends Controller
         return $disk->download($export->file_path, $export->downloadName(), ['Content-Type' => 'application/pdf']);
     }
 
+    public function competencyEvidence(\App\Models\CompetencyEvidence $evidence): StreamedResponse
+    {
+        return $this->inline($evidence->path, $evidence->original_name ?: 'screenshot', $evidence->mime ?: 'image/png');
+    }
+
     private function inline(string $path, string $name, string $mime): StreamedResponse
     {
         $disk = Storage::disk(config('knowledge.disk'));

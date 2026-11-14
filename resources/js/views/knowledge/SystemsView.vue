@@ -5,10 +5,16 @@
                 <h1 class="text-2xl font-bold text-gray-900">Knowledge</h1>
                 <p class="text-sm text-gray-500 mt-1">Every internal system: what it does, who owns it, who to call when it breaks, and its manual.</p>
             </div>
-            <router-link :to="{ name: 'MyContributions' }"
-                         class="inline-flex items-center justify-center px-4 py-2 rounded-xl text-sm font-semibold bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
-                My contributions
-            </router-link>
+            <div class="flex flex-wrap gap-2">
+                <router-link v-if="authStore.hasModule('competency')" :to="{ name: 'MyReadiness' }"
+                             class="inline-flex items-center justify-center px-4 py-2 rounded-xl text-sm font-semibold bg-teal-600 text-white hover:bg-teal-700">
+                    My readiness
+                </router-link>
+                <router-link :to="{ name: 'MyContributions' }"
+                             class="inline-flex items-center justify-center px-4 py-2 rounded-xl text-sm font-semibold bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
+                    My contributions
+                </router-link>
+            </div>
         </div>
 
         <input v-model="search" type="search" placeholder="Search systems…"
@@ -43,6 +49,9 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import api from '../../lib/axios';
+import { useAuthStore } from '../../stores/auth';
+
+const authStore = useAuthStore();
 
 const systems = ref([]);
 const loading = ref(true);

@@ -41,7 +41,7 @@ class ManualReleaseService
             abort(403);
         }
 
-        return DB::transaction(function () use ($system, $user, $isMajor, $summary) {
+        $release = DB::transaction(function () use ($system, $user, $isMajor, $summary) {
             $system = System::query()->lockForUpdate()->findOrFail($system->id);
             $pending = $system->unreleasedRevisions()->pluck('id');
 
@@ -68,6 +68,13 @@ class ManualReleaseService
 
             return $release;
         });
+
+        // A major version: passes on this product's competency checks must be redone.
+        if ($isMajor) {
+            app(CompetencyService::class)->flagRecheck($system, $release->version);
+        }
+
+        return $release;
     }
 
     /**

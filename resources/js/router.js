@@ -65,6 +65,18 @@ const routes = [
         meta: { requiresAuth: true, module: 'knowledge' }
     },
     {
+        path: '/knowledge/readiness',
+        name: 'MyReadiness',
+        component: () => import('./views/knowledge/MyReadinessView.vue'),
+        meta: { requiresAuth: true, module: 'competency' }
+    },
+    {
+        path: '/knowledge/checks/:id',
+        name: 'CompetencyCheck',
+        component: () => import('./views/knowledge/CompetencyCheckView.vue'),
+        meta: { requiresAuth: true, module: 'competency' }
+    },
+    {
         path: '/knowledge/:slug',
         name: 'SystemDetail',
         component: () => import('./views/knowledge/SystemDetailView.vue'),

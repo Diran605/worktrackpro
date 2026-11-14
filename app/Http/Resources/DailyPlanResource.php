@@ -23,6 +23,7 @@ class DailyPlanResource extends JsonResource
                 ? ['id' => $this->system->id, 'name' => $this->system->name, 'slug' => $this->system->slug]
                 : null,
             'manual_change_request_id' => $this->manual_change_request_id,
+            'competency_check_id' => $this->competency_check_id,
             'timer' => [
                 'status' => $this->timer_status?->value ?? $this->timer_status,
                 'started_at' => $this->timer_started_at?->toIso8601String(),
