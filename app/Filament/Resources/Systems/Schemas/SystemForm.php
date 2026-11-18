@@ -108,7 +108,10 @@ class SystemForm
                     ]),
 
                 Section::make('People')
-                    ->description('Owners and backup owners approve changes to this product\'s manual.')
+                    ->description(fn () => 'Owners and backup owners approve changes to this product\'s manual.'
+                        . (\App\Support\Modules::allows(\App\Support\Modules::COMPETENCY)
+                            ? ' They also review answers to its competency checks, together with any reviewers you add here.'
+                            : ''))
                     ->schema([
                         Repeater::make('members')
                             ->relationship()

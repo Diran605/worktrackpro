@@ -133,6 +133,17 @@ Route::prefix('v1')->group(function () {
             Route::post('{change}/submit', [ManualChangeController::class, 'submit']);
             Route::post('{change}/track-time', [ManualChangeController::class, 'trackTime'])->middleware('module:work_tracking');
         });
+
+        // Competency & readiness
+        Route::middleware('module:competency')->group(function () {
+            Route::get('readiness', [\App\Http\Controllers\Api\V1\CompetencyController::class, 'readiness']);
+            Route::get('competency-checks/{check}', [\App\Http\Controllers\Api\V1\CompetencyController::class, 'show']);
+            Route::post('competency-checks/{check}/submissions', [\App\Http\Controllers\Api\V1\CompetencyController::class, 'start']);
+            Route::patch('competency-submissions/{submission}', [\App\Http\Controllers\Api\V1\CompetencyController::class, 'update']);
+            Route::post('competency-submissions/{submission}/screenshots', [\App\Http\Controllers\Api\V1\CompetencyController::class, 'addScreenshot']);
+            Route::post('competency-submissions/{submission}/submit', [\App\Http\Controllers\Api\V1\CompetencyController::class, 'submit']);
+            Route::delete('competency-evidence/{evidence}', [\App\Http\Controllers\Api\V1\CompetencyController::class, 'removeScreenshot']);
+        });
         }); // knowledge
 
         // Team directory

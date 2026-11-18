@@ -15,9 +15,12 @@ class SystemMember extends Model
     public const ROLES = [
         self::ROLE_OWNER => 'Owner',
         self::ROLE_BACKUP_OWNER => 'Backup owner',
-        self::ROLE_REVIEWER => 'Reviewer',
+        self::ROLE_REVIEWER => 'Reviewer (competency checks)',
         self::ROLE_CONTACT => 'Support contact',
     ];
+
+    /** Review answers to the product's competency checks. */
+    public const COMPETENCY_REVIEWER_ROLES = [self::ROLE_OWNER, self::ROLE_BACKUP_OWNER, self::ROLE_REVIEWER];
 
     protected $fillable = ['system_id', 'user_id', 'role'];
 

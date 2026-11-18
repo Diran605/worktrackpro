@@ -46,6 +46,21 @@ class User extends Authenticatable implements FilamentUser
         ];
     }
 
+    protected static function booted(): void
+    {
+        // New starters and department moves get their required competency checks as plan tasks
+        // (role changes are picked up by the daily worktrack:competency:refresh run).
+        static::saved(function (User $user) {
+            if ($user->wasRecentlyCreated || $user->wasChanged(['department_id', 'is_active'])) {
+                try {
+                    app(\App\Services\CompetencyService::class)->assignPlans($user);
+                } catch (\Throwable $e) {
+                    report($e);
+                }
+            }
+        });
+    }
+
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
@@ -109,6 +124,19 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
+     * IDs of systems where this user reviews competency answers (owner, backup owner or reviewer).
+     */
+    public function competencyReviewSystemIds(): array
+    {
+        return $this->systemMemberships()
+            ->whereIn('role', SystemMember::COMPETENCY_REVIEWER_ROLES)
+            ->pluck('system_id')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
      * Every active admin in this user's department (or organisation, if the user has no department).
      */
     public function departmentAdminIds(): array
@@ -147,6 +175,12 @@ class User extends Authenticatable implements FilamentUser
         }
 
         // System owners review documentation in Filament, even if their role is "worker".
-        return $this->ownedSystemIds() !== [];
+        if ($this->ownedSystemIds() !== []) {
+            return true;
+        }
+
+        // Named reviewers of a product review competency answers there.
+        return \App\Support\Modules::organisationHas($this->organisation_id, \App\Support\Modules::COMPETENCY)
+            && $this->competencyReviewSystemIds() !== [];
     }
 }

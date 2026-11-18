@@ -109,6 +109,9 @@ class CarryOverController extends Controller
                 'is_assigned' => (bool) $plan->is_assigned,
                 'task_template_id' => $plan->task_template_id,
                 'personal_recurring_task_id' => $plan->personal_recurring_task_id,
+                'system_id' => $plan->system_id,
+                'manual_change_request_id' => $plan->manual_change_request_id,
+                'competency_check_id' => $plan->competency_check_id,
                 'carried_from_plan_id' => $plan->id,
                 'carry_over_count' => (int) $plan->carry_over_count + 1,
             ]);

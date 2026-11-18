@@ -21,6 +21,7 @@ Route::middleware('signed')->prefix('kb')->group(function () {
     Route::get('revisions/{revision}/file', [\App\Http\Controllers\KnowledgeFileController::class, 'revisionFile'])->name('kb.revision-file');
     Route::get('changes/{change}/file', [\App\Http\Controllers\KnowledgeFileController::class, 'changeFile'])->name('kb.change-file');
     Route::get('exports/{export}', [\App\Http\Controllers\KnowledgeFileController::class, 'export'])->name('kb.export');
+    Route::get('competency-evidence/{evidence}', [\App\Http\Controllers\KnowledgeFileController::class, 'competencyEvidence'])->name('kb.competency-evidence');
 });
 
 // Public documentation library (docs.fortinet.com style). The same pages are served for the
